@@ -46,6 +46,7 @@ public class Client {
             }
             leaderConfig.setPort(4001);
             System.out.println(clientConfig.getPort());
+
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, RequestMessage.class);
             // Services that implement listen from UDPService
@@ -54,11 +55,10 @@ public class Client {
 
             RequestMessage requestMessage = new RequestMessage(clientConfig.getId(), Message.Type.APPEND, "teste");
 
-            for (;;) {
-                linkToNodes.send(leaderConfig.getId(),requestMessage);
-                Thread.sleep(10000000);
-                clientService.listen();
-            }
+            // TODO - future implementation for library communications
+            //linkToNodes.send(leaderConfig.getId(),requestMessage);
+            //clientService.listen();
+
 
         } catch (Exception e) {
             e.printStackTrace();

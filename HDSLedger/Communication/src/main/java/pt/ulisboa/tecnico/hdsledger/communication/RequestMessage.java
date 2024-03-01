@@ -10,7 +10,7 @@ public class RequestMessage extends Message {
     // String value
     private String message;
 
-    public RequestMessage(String senderId, Type type, String value) {
+    public RequestMessage(String senderId, Type type, String message) {
         super(senderId, type);
     }
 

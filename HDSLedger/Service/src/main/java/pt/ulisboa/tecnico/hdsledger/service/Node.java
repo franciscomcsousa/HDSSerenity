@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.RequestMessage;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CollapsingSet;
@@ -40,26 +41,27 @@ public class Node {
 
             // Create client configs (only works for one client) -> eventually will be the client library
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientConfigPath);
-            ProcessConfig clientConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals("1")).findAny().get();
+            ProcessConfig clientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals("20")).findAny().get();
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
                     ConsensusMessage.class);
 
-            Link linkToClient = new Link(nodeConfig, 4000 + Integer.parseInt(nodeConfig.getId()), clientConfigs,
-                    RequestMessage.class);
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
                     nodeConfigs);
 
+            // TODO - future implementation for library
+            //Link linkToClient = new Link(nodeConfig, 4000 + Integer.parseInt(nodeConfig.getId()), clientConfigs,
+            //        RequestMessage.class);
             // Listen to the clients requests
-            NodeService clientService = new NodeService(linkToClient, clientConfig, leaderConfig,
-                    clientConfigs);
+            //NodeService clientService = new NodeService(linkToClient, clientConfig, leaderConfig,
+            //        clientConfigs);
 
-
+            nodeService.startConsensus("teste");
             nodeService.listen();
-            clientService.listen();
+            //clientService.listen();
 
         } catch (Exception e) {
             e.printStackTrace();

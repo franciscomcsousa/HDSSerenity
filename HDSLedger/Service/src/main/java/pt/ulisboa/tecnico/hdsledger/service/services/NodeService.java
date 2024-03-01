@@ -95,12 +95,11 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(RequestMessage message) {
-        System.out.println("CONSENSUS STARTED");
-        String value = message.getMessage();
+    public void startConsensus(String message) {
+        System.out.println("CONSENSUS STARTED!");
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(value));
+        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(message));
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
@@ -124,7 +123,7 @@ public class NodeService implements UDPService {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            this.link.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
+            this.link.broadcast(this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound()));
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -348,9 +347,8 @@ public class NodeService implements UDPService {
                         new Thread(() -> {
 
                             switch (message.getType()) {
-                                // Maybe should have some type of verification ?
-                                case APPEND ->
-                                    startConsensus((RequestMessage) message);
+                                case APPEND ->  // placeholder
+                                    startConsensus("a");
 
                                 case PRE_PREPARE ->
                                     uponPrePrepare((ConsensusMessage) message);
