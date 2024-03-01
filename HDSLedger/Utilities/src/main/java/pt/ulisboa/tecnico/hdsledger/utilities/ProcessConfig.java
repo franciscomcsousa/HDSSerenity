@@ -19,6 +19,10 @@ public class ProcessConfig {
         return port;
     }
 
+    public void setPort(int newPort) {
+        port = newPort;
+    }
+
     public String getId() {
         return id;
     }

@@ -2,7 +2,9 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.communication.RequestMessage;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
+import pt.ulisboa.tecnico.hdsledger.utilities.CollapsingSet;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
@@ -17,13 +19,16 @@ public class Node {
     // Hardcoded path to files
     private static String nodesConfigPath = "src/main/resources/";
 
+    // currently will only work for one client ! -> since it will be a node client library is OK
+    // TODO
+    private static String clientConfigPath = "../Client/src/main/resources/client_config.json";
+
     public static void main(String[] args) {
 
         try {
             // Command line arguments
             String id = args[0];
             nodesConfigPath += args[1];
-
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
@@ -33,15 +38,28 @@ public class Node {
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
                     nodeConfig.isLeader()));
 
+            // Create client configs (only works for one client) -> eventually will be the client library
+            ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientConfigPath);
+            ProcessConfig clientConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals("1")).findAny().get();
+
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
                     ConsensusMessage.class);
 
+            Link linkToClient = new Link(nodeConfig, 4000 + Integer.parseInt(nodeConfig.getId()), clientConfigs,
+                    RequestMessage.class);
             // Services that implement listen from UDPService
+            // Listen to the nodes in the blockChain
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
                     nodeConfigs);
 
+            // Listen to the clients requests
+            NodeService clientService = new NodeService(linkToClient, clientConfig, leaderConfig,
+                    clientConfigs);
+
+
             nodeService.listen();
+            clientService.listen();
 
         } catch (Exception e) {
             e.printStackTrace();
