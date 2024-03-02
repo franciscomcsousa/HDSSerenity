@@ -44,6 +44,16 @@ This should install the following dependencies:
 
 - [Google's Gson](https://github.com/google/gson) - A Java library that can be used to convert Java Objects into their JSON representation.
 
+## Generate Keys
+
+All the nodes in the system use public and private keys that must be generated before-hand.
+To generate the keys, run the following commands inside the `KeyInfrastructure` directory:
+
+```bash
+javac *.java
+java RSAKeyGenerator w ./<priv-key-name>.priv ./<pub-key-name>.pub
+```
+
 ## Puppet Master
 
 The puppet master is a python script `puppet-master.py` which is responsible for starting the nodes
