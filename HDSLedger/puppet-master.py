@@ -25,11 +25,26 @@ client_config = client_configs[0]
 
 def quit_handler(*args):
     os.system(f"pkill -i {terminal}")
+    os.system(f"rm KeyInfrastructure/*.class KeyInfrastructure/*.priv KeyInfrastructure/*.pub")
     sys.exit()
 
 
 # Compile classes
 os.system("mvn clean install")
+os.system(f"javac KeyInfrastructure/*.java")
+
+# Generate keys for Nodes and Clients
+with open(f"Service/src/main/resources/{server_config}") as s:
+    with open(f"Client/src/main/resources/{client_config}") as c:
+        data_server = json.load(s)
+        data_client = json.load(c)
+        os.chdir("KeyInfrastructure")
+        for key in data_server:
+            os.system(f"java RSAKeyGenerator w ./node{key['id']}_privKey.priv ./node{key['id']}_pubKey.pub")
+        for key in data_client:
+                os.system(f"java RSAKeyGenerator w ./client{key['id']}_privKey.priv ./client{key['id']}_pubKey.pub")
+        os.chdir("..")
+        print("\n\nGenerated and saved keys\n\n")
 
 # Spawn blockchain nodes
 with open(f"Service/src/main/resources/{server_config}") as f:
