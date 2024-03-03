@@ -20,6 +20,7 @@ public class Node {
     // Hardcoded path to files
     private static String nodesConfigPath = "src/main/resources/";
 
+
     // currently will only work for one client ! -> since it will be a node client library is OK
     // TODO
     private static String clientConfigPath = "../Client/src/main/resources/client_config.json";

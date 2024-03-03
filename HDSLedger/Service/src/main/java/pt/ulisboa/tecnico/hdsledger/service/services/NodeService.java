@@ -16,6 +16,7 @@ import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
 
 public class NodeService implements UDPService {
 
@@ -45,6 +46,8 @@ public class NodeService implements UDPService {
     // Last decided consensus instance
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
+    private final String privKeyPath;
+
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
@@ -58,6 +61,7 @@ public class NodeService implements UDPService {
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
+        this.privKeyPath = "../KeyInfrastructure/node" + config.getId() + "_privKey.priv";
     }
 
     public ProcessConfig getConfig() {
@@ -95,7 +99,7 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(String message) {
+    public void startConsensus(String message) throws Exception {
         System.out.println("CONSENSUS STARTED!");
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -123,7 +127,9 @@ public class NodeService implements UDPService {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            this.link.broadcast(this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound()));
+            ConsensusMessage m = this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound());
+            byte[] signature = RSASignature.sign(m.toString(),this.privKeyPath);
+            this.link.broadcast(m,signature);
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -136,7 +142,7 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public void uponPrePrepare(ConsensusMessage message) {
+    public void uponPrePrepare(ConsensusMessage message) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -180,7 +186,8 @@ public class NodeService implements UDPService {
                 .setReplyToMessageId(senderMessageId)
                 .build();
 
-        this.link.broadcast(consensusMessage);
+        byte[] signature = RSASignature.sign(consensusMessage.toString(),this.privKeyPath);
+        this.link.broadcast(consensusMessage, signature);
     }
 
     /*
@@ -188,7 +195,7 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public synchronized void uponPrepare(ConsensusMessage message) {
+    public synchronized void uponPrepare(ConsensusMessage message) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -229,7 +236,9 @@ public class NodeService implements UDPService {
                     .setMessage(instance.getCommitMessage().toJson())
                     .build();
 
-            link.send(senderId, m);
+            byte[] signature = RSASignature.sign(m.toString(),this.privKeyPath);
+            System.out.println("This is the message: " + m.toString());
+            link.send(senderId, m, signature);
             return;
         }
 
@@ -246,7 +255,7 @@ public class NodeService implements UDPService {
             CommitMessage c = new CommitMessage(preparedValue.get());
             instance.setCommitMessage(c);
 
-            sendersMessage.forEach(senderMessage -> {
+            for (ConsensusMessage senderMessage : sendersMessage) {
                 ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
                         .setConsensusInstance(consensusInstance)
                         .setRound(round)
@@ -255,8 +264,10 @@ public class NodeService implements UDPService {
                         .setMessage(c.toJson())
                         .build();
 
-                link.send(senderMessage.getSenderId(), m);
-            });
+                //RSASignature.sign(m,)
+                byte[] signature = RSASignature.sign(m.toString(), this.privKeyPath);
+                link.send(senderMessage.getSenderId(), m, signature);
+            }
         }
     }
 
@@ -348,14 +359,30 @@ public class NodeService implements UDPService {
 
                             switch (message.getType()) {
                                 case APPEND ->  // placeholder
-                                    startConsensus("a");
+                                {
+                                    try {
+                                        startConsensus("a");
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
 
-                                case PRE_PREPARE ->
-                                    uponPrePrepare((ConsensusMessage) message);
+                                case PRE_PREPARE -> {
+                                    try {
+                                        uponPrePrepare((ConsensusMessage) message);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
 
 
-                                case PREPARE ->
-                                    uponPrepare((ConsensusMessage) message);
+                                case PREPARE -> {
+                                    try {
+                                        uponPrepare((ConsensusMessage) message);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
 
 
                                 case COMMIT ->

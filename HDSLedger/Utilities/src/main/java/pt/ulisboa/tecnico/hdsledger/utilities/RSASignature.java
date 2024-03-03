@@ -19,9 +19,9 @@ public class RSASignature {
 
     // check if there is a better way, to not have 2 getFunctions
     // TODO
-    public static PrivateKey getPrivateKey(String privateKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+    public static PrivateKey getPrivateKey(String privKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         byte[] privEncoded;
-        try (FileInputStream fis = new FileInputStream(privateKeyPath)) {
+        try (FileInputStream fis = new FileInputStream(privKeyPath)) {
             privEncoded = new byte[fis.available()];
             fis.read(privEncoded);
         }
@@ -32,9 +32,9 @@ public class RSASignature {
         return keyFacPriv.generatePrivate(privSpec);
     }
 
-    public static PublicKey getPublicKey(String publicKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+    public static PublicKey getPublicKey(String pubKeyPath) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         byte[] pubEncoded;
-        try (FileInputStream fis = new FileInputStream(publicKeyPath)) {
+        try (FileInputStream fis = new FileInputStream(pubKeyPath)) {
             pubEncoded = new byte[fis.available()];
             fis.read(pubEncoded);
         }
@@ -45,23 +45,34 @@ public class RSASignature {
         return keyFacPub.generatePublic(pubSpec);
     }
 
-    public static String sign(String plainText, PrivateKey privateKey) throws Exception {
+//    public static byte[] sign(String message, PrivateKey privateKey) throws Exception {
+//        Signature privateSignature = Signature.getInstance("SHA256withRSA");
+//        privateSignature.initSign(privateKey);
+//        privateSignature.update(message.getBytes(UTF_8));
+//
+//        //byte[] signature = privateSignature.sign();
+//
+//        return privateSignature.sign();
+//    }
+
+    public static byte[] sign(String message, String privKeyPath) throws Exception {
+        PrivateKey privateKey = getPrivateKey(privKeyPath);
+
         Signature privateSignature = Signature.getInstance("SHA256withRSA");
         privateSignature.initSign(privateKey);
-        privateSignature.update(plainText.getBytes(UTF_8));
+        privateSignature.update(message.getBytes(UTF_8));
 
-        byte[] signature = privateSignature.sign();
+        //byte[] signature = privateSignature.sign();
 
-        return Base64.getEncoder().encodeToString(signature);
+        return privateSignature.sign();
     }
 
-    public static boolean verifySign(String plainText, String signature, PublicKey publicKey) throws Exception {
+    public static boolean verifySign(String plainText, byte[] signature, PublicKey publicKey) throws Exception {
         Signature publicSignature = Signature.getInstance("SHA256withRSA");
         publicSignature.initVerify(publicKey);
         publicSignature.update(plainText.getBytes(UTF_8));
 
-        byte[] signatureBytes = Base64.getDecoder().decode(signature);
-
-        return publicSignature.verify(signatureBytes);
+        // returns boolean
+        return publicSignature.verify(signature);
     }
 }

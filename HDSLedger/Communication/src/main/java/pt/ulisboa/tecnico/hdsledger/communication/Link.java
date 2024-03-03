@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.Message.Type;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.text.MessageFormat;
@@ -73,9 +74,9 @@ public class Link {
      *
      * @param data The message to be broadcasted
      */
-    public void broadcast(Message data) {
+    public void broadcast(Message data, byte[] signature) {
         Gson gson = new Gson();
-        nodes.forEach((destId, dest) -> send(destId, gson.fromJson(gson.toJson(data), data.getClass())));
+        nodes.forEach((destId, dest) -> send(destId, gson.fromJson(gson.toJson(data), data.getClass()), signature));
     }
 
     /*
@@ -84,8 +85,10 @@ public class Link {
      * @param nodeId The node identifier
      *
      * @param data The message to be sent
+     *
+     * @param signature The message to be sent
      */
-    public void send(String nodeId, Message data) {
+    public void send(String nodeId, Message data, byte[] signature ) {
 
         // Spawn a new thread to send the message
         // To avoid blocking while waiting for ACK
@@ -120,7 +123,7 @@ public class Link {
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
 
-                    unreliableSend(destAddress, destPort, data);
+                    unreliableSend(destAddress, destPort, data, signature);
 
                     // Wait (using exponential back-off), then look for ACK
                     Thread.sleep(sleepTime);
@@ -151,10 +154,19 @@ public class Link {
      *
      * @param data The message to be sent
      */
-    public void unreliableSend(InetAddress hostname, int port, Message data) {
+    public void unreliableSend(InetAddress hostname, int port, Message data, byte[] signature) {
         new Thread(() -> {
             try {
-                byte[] buf = new Gson().toJson(data).getBytes();
+
+                //System.out.println("Signature size: "+ signature.length); // Should always be 512
+                //System.out.println("Message size: "+ (new Gson().toJson(data).getBytes()).length);
+                ByteArrayOutputStream totalBuf = new ByteArrayOutputStream();
+                totalBuf.write(new Gson().toJson(data).getBytes());
+                totalBuf.write(signature);
+
+                byte[] buf = totalBuf.toByteArray();
+                //System.out.println("BUFFER size: "+ buf.length);
+
                 DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
                 socket.send(packet);
             } catch (IOException e) {
@@ -183,11 +195,14 @@ public class Link {
             response = new DatagramPacket(buf, buf.length);
 
             socket.receive(response);
-
-            byte[] buffer = Arrays.copyOfRange(response.getData(), 0, response.getLength());
-            serialized = new String(buffer);
+            // signature is appended to the message, since is sha2 is 512 bytes
+            byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength() - 512);
+            byte[] signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
+            serialized = new String(messageBuffer);
             message = new Gson().fromJson(serialized, Message.class);
+            
         }
+
 
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
@@ -197,7 +212,7 @@ public class Link {
 
         // Handle ACKS, since it's possible to receive multiple acks from the same
         // message
-        if (message.getType().equals(Message.Type.ACK)) {
+        if (message.getType().equals(Type.ACK)) {
             receivedAcks.add(messageId);
             return message;
         }
@@ -210,7 +225,7 @@ public class Link {
         Type originalType = message.getType();
         // Message already received (add returns false if already exists) => Discard
         if (isRepeated) {
-            message.setType(Message.Type.IGNORE);
+            message.setType(Type.IGNORE);
         }
 
         switch (message.getType()) {
@@ -240,14 +255,16 @@ public class Link {
             InetAddress address = InetAddress.getByName(response.getAddress().getHostAddress());
             int port = response.getPort();
 
-            Message responseMessage = new Message(this.config.getId(), Message.Type.ACK);
+            Message responseMessage = new Message(this.config.getId(), Type.ACK);
             responseMessage.setMessageId(messageId);
 
             // ACK is sent without needing for another ACK because
             // we're assuming an eventually synchronous network
             // Even if a node receives the message multiple times,
             // it will discard duplicates
-            unreliableSend(address, port, responseMessage);
+            // TODO, right now its sending the other parties signature oops
+            byte[] signature = new byte[512];
+            unreliableSend(address, port, responseMessage, signature);
         }
         
         return message;
