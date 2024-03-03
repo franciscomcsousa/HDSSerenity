@@ -179,13 +179,14 @@ public class Link {
     /*
      * Receives a message from any node in the network (blocking)
      */
-    public Message receive() throws IOException, ClassNotFoundException {
+    public Data receive() throws IOException, ClassNotFoundException {
 
         Message message = null;
+        byte[] signature = null;
         String serialized = "";
         Boolean local = false;
         DatagramPacket response = null;
-        
+
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
             local = true; 
@@ -197,12 +198,14 @@ public class Link {
             socket.receive(response);
             // signature is appended to the message, since is sha2 is 512 bytes
             byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength() - 512);
-            byte[] signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
+            signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
             serialized = new String(messageBuffer);
             message = new Gson().fromJson(serialized, Message.class);
-            
+
         }
 
+        // Data creation: message + signature
+        Data data = new Data(message, signature);
 
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
@@ -210,16 +213,20 @@ public class Link {
         if (!nodes.containsKey(senderId))
             throw new HDSSException(ErrorMessage.NoSuchNode);
 
+
         // Handle ACKS, since it's possible to receive multiple acks from the same
         // message
         if (message.getType().equals(Type.ACK)) {
             receivedAcks.add(messageId);
-            return message;
+            return data;
         }
 
         // It's not an ACK -> Deserialize for the correct type
         if (!local)
             message = new Gson().fromJson(serialized, this.messageClass);
+
+        // correct message type
+        data.setMessage(message);
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
@@ -230,18 +237,18 @@ public class Link {
 
         switch (message.getType()) {
             case PRE_PREPARE -> {
-                return message;
+                return data;
             }
             case IGNORE -> {
                 if (!originalType.equals(Type.COMMIT))
-                    return message;
+                    return data;
             }
             case PREPARE -> {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
                 if (consensusMessage.getReplyTo() != null && consensusMessage.getReplyTo().equals(config.getId()))
                     receivedAcks.add(consensusMessage.getReplyToMessageId());
 
-                return message;
+                return data;
             }
             case COMMIT -> {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
@@ -262,11 +269,11 @@ public class Link {
             // we're assuming an eventually synchronous network
             // Even if a node receives the message multiple times,
             // it will discard duplicates
-            // TODO, right now its sending the other parties signature oops
-            byte[] signature = new byte[512];
+            // TODO, right now its sending an empty signature oopps
+            signature = new byte[512];
             unreliableSend(address, port, responseMessage, signature);
         }
         
-        return message;
+        return data;
     }
 }

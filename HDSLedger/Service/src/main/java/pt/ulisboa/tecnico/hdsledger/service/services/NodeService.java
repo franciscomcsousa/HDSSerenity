@@ -352,7 +352,10 @@ public class NodeService implements UDPService {
             new Thread(() -> {
                 try {
                     while (true) {
-                        Message message = link.receive();
+
+                        Data data = link.receive();
+                        Message message = data.getMessage();
+                        byte[] signature = data.getSignature();;
 
                         // Separate thread to handle each message
                         new Thread(() -> {
