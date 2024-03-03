@@ -388,9 +388,13 @@ public class NodeService implements UDPService {
                                 }
 
 
-                                case COMMIT ->
-                                    uponCommit((ConsensusMessage) message);
-
+                                case COMMIT -> {
+                                    try {
+                                        uponCommit((ConsensusMessage) message);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
 
                                 case ACK ->
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",

@@ -17,12 +17,9 @@ import java.util.logging.Level;
 public class Node {
 
     private static final CustomLogger LOGGER = new CustomLogger(Node.class.getName());
-    // Hardcoded path to files
+
+    // Hardcoded path to nodes and clients files
     private static String nodesConfigPath = "src/main/resources/";
-
-
-    // currently will only work for one client ! -> since it will be a node client library is OK
-    // TODO
     private static String clientConfigPath = "../Client/src/main/resources/client_config.json";
 
     public static void main(String[] args) {
@@ -42,27 +39,25 @@ public class Node {
 
             // Create client configs (only works for one client) -> eventually will be the client library
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientConfigPath);
-            ProcessConfig clientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals("20")).findAny().get();
+
+            // Combine the node and client configs into one ProcessConfig array
+            ProcessConfig[] allConfigs = new ProcessConfig[nodeConfigs.length + clientConfigs.length];
+            System.arraycopy(nodeConfigs, 0, allConfigs, 0, nodeConfigs.length);
+            System.arraycopy(clientConfigs, 0, allConfigs, nodeConfigs.length, clientConfigs.length);
 
             // Abstraction to send and receive messages
-            Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
+            Link linkToAllNodes = new Link(nodeConfig, nodeConfig.getPort(), allConfigs,
                     ConsensusMessage.class);
 
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
-            NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
-                    nodeConfigs);
+            NodeService nodeService = new NodeService(linkToAllNodes, nodeConfig, leaderConfig,
+                    allConfigs);
 
             // TODO - future implementation for library
-            //Link linkToClient = new Link(nodeConfig, 4000 + Integer.parseInt(nodeConfig.getId()), clientConfigs,
-            //        RequestMessage.class);
-            // Listen to the clients requests
-            //NodeService clientService = new NodeService(linkToClient, clientConfig, leaderConfig,
-            //        clientConfigs);
-
-            nodeService.startConsensus("teste");
+            
+            // Start listening for requests
             nodeService.listen();
-            //clientService.listen();
 
         } catch (Exception e) {
             e.printStackTrace();

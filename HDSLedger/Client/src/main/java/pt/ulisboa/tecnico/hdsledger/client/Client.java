@@ -7,6 +7,7 @@ import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
+import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
 
 import java.text.MessageFormat;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ public class Client {
             // Create configuration instances
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientsConfigPath);
             ProcessConfig clientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals(id)).findAny().get();
+            String privKeyPath = "../KeyInfrastructure/client" + clientConfig.getId() + "_privKey.priv";
 
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}",
                     clientConfig.getId(), clientConfig.getHostname(), clientConfig.getPort()));
@@ -41,10 +43,6 @@ public class Client {
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
 
-            for (ProcessConfig nodeConfig : nodeConfigs) {
-                nodeConfig.setPort(4000 + Integer.parseInt(nodeConfig.getId()));
-            }
-            leaderConfig.setPort(4001);
             System.out.println(clientConfig.getPort());
 
             // Abstraction to send and receive messages
@@ -55,9 +53,12 @@ public class Client {
 
             RequestMessage requestMessage = new RequestMessage(clientConfig.getId(), Message.Type.APPEND, "teste");
 
+            // Signature
+            byte[] signature = RSASignature.sign(requestMessage.toString(), privKeyPath);
+
             // TODO - future implementation for library communications
-            //linkToNodes.send(leaderConfig.getId(),requestMessage);
-            //clientService.listen();
+            linkToNodes.send(leaderConfig.getId(),requestMessage, signature);
+            clientService.listen();
 
 
         } catch (Exception e) {
