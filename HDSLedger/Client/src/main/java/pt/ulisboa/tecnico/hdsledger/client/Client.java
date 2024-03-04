@@ -57,6 +57,9 @@ public class Client {
 
             // TODO - future implementation for library communications
             linkToNodes.send(leaderConfig.getId(),requestMessage);
+            Thread.sleep(5000);
+            requestMessage.setMessage("aaaaa");
+            linkToNodes.send(leaderConfig.getId(),requestMessage);
             clientService.listen();
 
 
