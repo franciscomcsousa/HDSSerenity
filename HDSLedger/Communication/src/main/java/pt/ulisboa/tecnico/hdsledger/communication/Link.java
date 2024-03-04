@@ -143,12 +143,10 @@ public class Link {
                     int senderId = Integer.parseInt(data.getSenderId());
 
                     if (isSenderClient(senderId)) {
-                        String key = "../KeyInfrastructure/client" + data.getSenderId() + "_privKey.priv";
-                        signature = RSASignature.sign(new Gson().toJson(data),key);
+                        signature = RSASignature.sign(new Gson().toJson(data), data.getSenderId());
                     }
                     else if (isSenderNode(senderId)){
-                        String key = "../KeyInfrastructure/node" + data.getSenderId() + "_privKey.priv";
-                        signature = RSASignature.sign(new Gson().toJson(data),key);
+                        signature = RSASignature.sign(new Gson().toJson(data), data.getSenderId());
                     }
                     // TODO - what about if the data sender id is bellow 0
 
@@ -216,7 +214,6 @@ public class Link {
         Boolean local = false;
         DatagramPacket response = null;
 
-
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
             local = true; 
@@ -241,8 +238,7 @@ public class Link {
         // should not be done this way but oh well TODO
         // basically when the owner of the message receives its message, makes a signature on the spot
         if (local) {
-            String key = "../KeyInfrastructure/node" + message.getSenderId() + "_privKey.priv";
-            signature = RSASignature.sign(new Gson().toJson(message),key);
+            signature = RSASignature.sign(new Gson().toJson(message), message.getSenderId());
         }
 
         // Data creation: message + signature
@@ -313,8 +309,7 @@ public class Link {
             // Even if a node receives the message multiple times,
             // it will discard duplicates
 
-            String key = "../KeyInfrastructure/node" + responseMessage.getSenderId() + "_privKey.priv";
-            byte[] ackSignature = RSASignature.sign(new Gson().toJson(responseMessage),key);
+            byte[] ackSignature = RSASignature.sign(new Gson().toJson(responseMessage), responseMessage.getSenderId());
 
             unreliableSend(address, port, responseMessage, ackSignature);
         }

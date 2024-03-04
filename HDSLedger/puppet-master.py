@@ -38,20 +38,16 @@ with open(f"Service/src/main/resources/{server_config}") as s:
     with open(f"Client/src/main/resources/{client_config}") as c:
         data_server = json.load(s)
         data_client = json.load(c)
+        data_all = data_client + data_server
         os.chdir("KeyInfrastructure")
-        for key in data_server:
-            privPath = f"./node{key['id']}_privKey.priv"
-            pubPath = f"./node{key['id']}_pubKey.pub"
-            if (os.path.exists(privPath) and os.path.exists(pubPath)):
-                continue
 
-            os.system(f"java RSAKeyGenerator w {privPath} {pubPath}")
-        for key in data_client:
-            privPath = f"./client{key['id']}_privKey.priv "
-            pubPath = f"./client{key['id']}_pubKey.pub"
+        for key in data_all:
+            privPath = f"./id{key['id']}.key"
+            pubPath = f"./id{key['id']}.key.pub"
             if (os.path.exists(privPath) and os.path.exists(pubPath)):
                 continue
             os.system(f"java RSAKeyGenerator w {privPath} {pubPath}")
+
         os.chdir("..")
         print("\nGenerated and saved keys\n")
 

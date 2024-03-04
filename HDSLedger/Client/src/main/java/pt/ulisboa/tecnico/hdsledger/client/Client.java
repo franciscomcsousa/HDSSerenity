@@ -34,7 +34,6 @@ public class Client {
             // Create configuration instances
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientsConfigPath);
             ProcessConfig clientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals(id)).findAny().get();
-            String privKeyPath = "../KeyInfrastructure/client" + clientConfig.getId() + "_privKey.priv";
 
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}",
                     clientConfig.getId(), clientConfig.getHostname(), clientConfig.getPort()));
@@ -54,7 +53,7 @@ public class Client {
             RequestMessage requestMessage = new RequestMessage(clientConfig.getId(), Message.Type.APPEND, "teste");
 
             // Signature
-            byte[] signature = RSASignature.sign(requestMessage.toString(), privKeyPath);
+            byte[] signature = RSASignature.sign(requestMessage.toString(), clientConfig.getId());
 
             // TODO - future implementation for library communications
             linkToNodes.send(leaderConfig.getId(),requestMessage);

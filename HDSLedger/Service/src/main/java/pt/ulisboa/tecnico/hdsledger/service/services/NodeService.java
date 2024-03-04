@@ -148,8 +148,7 @@ public class NodeService implements UDPService {
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
 
-        boolean isOK = RSASignature.verifySign(new Gson().toJson(message), signature,
-                "../KeyInfrastructure/node" + senderId + "_pubKey.pub");
+        boolean isOK = RSASignature.verifySign(new Gson().toJson(message), signature, message.getSenderId());
 
         System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
 
