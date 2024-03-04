@@ -142,15 +142,12 @@ public class Link {
                     byte[] signature = null;
                     int senderId = Integer.parseInt(data.getSenderId());
 
-                    if (isSenderClient(senderId)) {
-                        signature = RSASignature.sign(new Gson().toJson(data), data.getSenderId());
-                    }
-                    else if (isSenderNode(senderId)){
-                        signature = RSASignature.sign(new Gson().toJson(data), data.getSenderId());
-                    }
-                    // TODO - what about if the data sender id is bellow 0
+                    signature = RSASignature.sign(data.getSignable(), data.getSenderId());
+                    data.setSignature(signature);
 
-                    unreliableSend(destAddress, destPort, data, signature);
+                    // TODO - what about if the data sender id is bellow 0 - byzantine behaviour
+
+                    unreliableSend(destAddress, destPort, data);
 
                     // Wait (using exponential back-off), then look for ACK
                     Thread.sleep(sleepTime);
@@ -183,17 +180,10 @@ public class Link {
      *
      * @param data The message to be sent
      */
-    public void unreliableSend(InetAddress hostname, int port, Message data, byte[] signature) {
+    public void unreliableSend(InetAddress hostname, int port, Message data) {
         new Thread(() -> {
             try {
-
-                ByteArrayOutputStream totalBuf = new ByteArrayOutputStream();
-
-                totalBuf.write(new Gson().toJson(data).getBytes());
-                totalBuf.write(signature);
-
-                byte[] buf = totalBuf.toByteArray();
-
+                byte[] buf = new Gson().toJson(data).getBytes();
                 DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
                 socket.send(packet);
             } catch (IOException e) {
@@ -206,7 +196,7 @@ public class Link {
     /*
      * Receives a message from any node in the network (blocking)
      */
-    public Data receive() throws Exception {
+    public Message receive() throws Exception {
 
         Message message = null;
         byte[] signature = null;
@@ -224,25 +214,21 @@ public class Link {
 
             socket.receive(response);
             // signature is appended to the message, since is sha2 is 512 bytes
-            byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength() - 512);
-            signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
+            byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength());
+            //signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
             serialized = new String(messageBuffer);
             // If the sender is a client (id >= 20), deserialize the message to a RequestMessage
-            if (Integer.parseInt(new Gson().fromJson(serialized, Message.class).getSenderId()) >= 20) {
+            if (isSenderClient(Integer.parseInt(new Gson().fromJson(serialized, Message.class).getSenderId()))) {
                 message = new Gson().fromJson(serialized, RequestMessage.class);
             } else {
                 message = new Gson().fromJson(serialized, Message.class);
             }
         }
 
-        // should not be done this way but oh well TODO
-        // basically when the owner of the message receives its message, makes a signature on the spot
-        if (local) {
-            signature = RSASignature.sign(new Gson().toJson(message), message.getSenderId());
-        }
+        signature = message.getSignature();
 
         // Data creation: message + signature
-        Data data = new Data(message, signature);
+        // Data data = new Data(message, signature);
 
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
@@ -255,14 +241,12 @@ public class Link {
         // message
         if (message.getType().equals(Type.ACK)) {
             receivedAcks.add(messageId);
-            return data;
+            return message;
         }
 
         // It's not an ACK -> Deserialize for the correct type (if not a client who sent)
-        if (!local && Integer.parseInt(senderId) < 20) {
+        if (!local && isSenderNode(Integer.parseInt(senderId))) {
             message = new Gson().fromJson(serialized, this.messageClass);
-            // correct message type
-            data.setMessage(message);
         }
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
@@ -270,24 +254,30 @@ public class Link {
         // Message already received (add returns false if already exists) => Discard
         if (isRepeated) {
             message.setType(Type.IGNORE);
-            // correct message type
-            data.setMessage(message);
         }
+
+        // TODO ? - Local messages don't have a need to verify the signature (they don't even send one)
+        if (!local) {
+            boolean isOK = RSASignature.verifySign(message.getSignable(), signature, message.getSenderId());
+
+            System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
+        }
+
 
         switch (message.getType()) {
             case PRE_PREPARE -> {
-                return data;
+                return message;
             }
             case IGNORE -> {
                 if (!originalType.equals(Type.COMMIT))
-                    return data;
+                    return message;
             }
             case PREPARE -> {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
                 if (consensusMessage.getReplyTo() != null && consensusMessage.getReplyTo().equals(config.getId()))
                     receivedAcks.add(consensusMessage.getReplyToMessageId());
 
-                return data;
+                return message;
             }
             case COMMIT -> {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
@@ -309,11 +299,12 @@ public class Link {
             // Even if a node receives the message multiple times,
             // it will discard duplicates
 
-            byte[] ackSignature = RSASignature.sign(new Gson().toJson(responseMessage), responseMessage.getSenderId());
+            byte[] ackSignature = RSASignature.sign(responseMessage.getSignable(), responseMessage.getSenderId());
+            responseMessage.setSignature(ackSignature);
 
-            unreliableSend(address, port, responseMessage, ackSignature);
+            unreliableSend(address, port, responseMessage);
         }
         
-        return data;
+        return message;
     }
 }

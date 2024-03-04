@@ -11,6 +11,9 @@ public class Message implements Serializable {
     // Message type
     private Type type;
 
+    // Signature
+    private byte[] signature;
+
     public enum Type {
         APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE;
     }
@@ -42,5 +45,19 @@ public class Message implements Serializable {
 
     public void setType(Type type) {
         this.type = type;
+    }
+
+    public byte[] getSignature() {
+        return signature;
+    }
+
+    public void setSignature(byte[] signature) {
+        this.signature = signature;
+    }
+
+    // TODO - prone to changes
+    // Probably a good idea to have messages that extend from this to override this method
+    public String getSignable(){
+        return senderId + Integer.toString(messageId) + type.toString();
     }
 }
