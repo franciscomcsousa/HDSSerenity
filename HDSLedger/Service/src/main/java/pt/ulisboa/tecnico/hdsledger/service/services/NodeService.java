@@ -137,7 +137,7 @@ public class NodeService implements UDPService {
 
     /*
      * Handle pre prepare messages and if the message
-     * came from leader and is justified them broadcast prepare
+     * came from leader and is justified then broadcast prepare
      *
      * @param message Message to be handled
      */

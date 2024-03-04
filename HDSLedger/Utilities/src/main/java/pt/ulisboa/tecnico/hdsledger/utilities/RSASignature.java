@@ -57,6 +57,8 @@ public class RSASignature {
 //    }
 
     public static byte[] sign(String message, String privKeyPath) throws Exception {
+
+
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hashedData = digest.digest(message.getBytes(StandardCharsets.UTF_8));
 

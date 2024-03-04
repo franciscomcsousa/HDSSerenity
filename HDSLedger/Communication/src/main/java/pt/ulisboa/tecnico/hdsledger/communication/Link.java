@@ -85,6 +85,14 @@ public class Link {
         });
     }
 
+    public boolean isSenderClient(int senderId) {
+        return senderId >= 20;
+    }
+
+    public boolean isSenderNode(int senderId) {
+        return senderId < 20 && senderId > 0;
+    }
+
     /*
      * Sends a message to a specific node with guarantee of delivery
      *
@@ -132,14 +140,17 @@ public class Link {
                     // sign the message and get the signature
                     // if its a client sending, the file is named clientX_privKey.priv
                     byte[] signature = null;
-                    if (Integer.parseInt(data.getSenderId()) >= 20) {
+                    int senderId = Integer.parseInt(data.getSenderId());
+
+                    if (isSenderClient(senderId)) {
                         String key = "../KeyInfrastructure/client" + data.getSenderId() + "_privKey.priv";
                         signature = RSASignature.sign(new Gson().toJson(data),key);
                     }
-                    else{
+                    else if (isSenderNode(senderId)){
                         String key = "../KeyInfrastructure/node" + data.getSenderId() + "_privKey.priv";
                         signature = RSASignature.sign(new Gson().toJson(data),key);
                     }
+                    // TODO - what about if the data sender id is bellow 0
 
                     unreliableSend(destAddress, destPort, data, signature);
 
@@ -219,7 +230,7 @@ public class Link {
             byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength() - 512);
             signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
             serialized = new String(messageBuffer);
-            // If the sender is a client (id >= 20), desiarialize the message to a RequestMessage
+            // If the sender is a client (id >= 20), deserialize the message to a RequestMessage
             if (Integer.parseInt(new Gson().fromJson(serialized, Message.class).getSenderId()) >= 20) {
                 message = new Gson().fromJson(serialized, RequestMessage.class);
             } else {
@@ -236,7 +247,6 @@ public class Link {
 
         // Data creation: message + signature
         Data data = new Data(message, signature);
-
 
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
@@ -259,7 +269,6 @@ public class Link {
             data.setMessage(message);
         }
 
-
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
         // Message already received (add returns false if already exists) => Discard
@@ -268,7 +277,6 @@ public class Link {
             // correct message type
             data.setMessage(message);
         }
-
 
         switch (message.getType()) {
             case PRE_PREPARE -> {

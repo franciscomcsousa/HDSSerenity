@@ -25,7 +25,7 @@ client_config = client_configs[0]
 
 def quit_handler(*args):
     os.system(f"pkill -i {terminal}")
-    os.system(f"rm KeyInfrastructure/*.class KeyInfrastructure/*.priv KeyInfrastructure/*.pub")
+    #os.system(f"rm KeyInfrastructure/*.class KeyInfrastructure/*.priv KeyInfrastructure/*.pub")
     sys.exit()
 
 
@@ -40,11 +40,20 @@ with open(f"Service/src/main/resources/{server_config}") as s:
         data_client = json.load(c)
         os.chdir("KeyInfrastructure")
         for key in data_server:
-            os.system(f"java RSAKeyGenerator w ./node{key['id']}_privKey.priv ./node{key['id']}_pubKey.pub")
+            privPath = f"./node{key['id']}_privKey.priv"
+            pubPath = f"./node{key['id']}_pubKey.pub"
+            if (os.path.exists(privPath) and os.path.exists(pubPath)):
+                continue
+
+            os.system(f"java RSAKeyGenerator w {privPath} {pubPath}")
         for key in data_client:
-                os.system(f"java RSAKeyGenerator w ./client{key['id']}_privKey.priv ./client{key['id']}_pubKey.pub")
+            privPath = f"./client{key['id']}_privKey.priv "
+            pubPath = f"./client{key['id']}_pubKey.pub"
+            if (os.path.exists(privPath) and os.path.exists(pubPath)):
+                continue
+            os.system(f"java RSAKeyGenerator w {privPath} {pubPath}")
         os.chdir("..")
-        print("\n\nGenerated and saved keys\n\n")
+        print("\nGenerated and saved keys\n")
 
 # Spawn blockchain nodes
 with open(f"Service/src/main/resources/{server_config}") as f:
@@ -54,7 +63,7 @@ with open(f"Service/src/main/resources/{server_config}") as f:
         pid = os.fork()
         if pid == 0:
             os.system(
-                f"{terminal} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config}' ; sleep 500\"")
+                f"{terminal} --title Node:{key['id']} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config}' ; sleep 500\"")
             sys.exit()
 
 # Spawn client nodes
@@ -65,7 +74,7 @@ with open(f"Client/src/main/resources/{client_config}") as f:
         pid = os.fork()
         if pid == 0:
             os.system(
-                f"{terminal} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']} {client_config}' ; sleep 500\"")
+                f"{terminal} --title Client:{key['id']} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']} {client_config}' ; sleep 500\"")
             sys.exit()
 
 signal.signal(signal.SIGINT, quit_handler)
