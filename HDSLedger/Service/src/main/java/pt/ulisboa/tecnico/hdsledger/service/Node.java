@@ -54,7 +54,6 @@ public class Node {
             NodeService nodeService = new NodeService(linkToAllNodes, nodeConfig, leaderConfig,
                     allConfigs);
 
-            nodeService.startConsensus("a");
             // TODO - future implementation for library
             
             // Start listening for requests

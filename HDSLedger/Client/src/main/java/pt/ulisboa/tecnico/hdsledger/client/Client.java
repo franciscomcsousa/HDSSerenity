@@ -57,7 +57,7 @@ public class Client {
             byte[] signature = RSASignature.sign(requestMessage.toString(), privKeyPath);
 
             // TODO - future implementation for library communications
-            //linkToNodes.send(leaderConfig.getId(),requestMessage);
+            linkToNodes.send(leaderConfig.getId(),requestMessage);
             clientService.listen();
 
 

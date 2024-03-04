@@ -12,6 +12,7 @@ public class RequestMessage extends Message {
 
     public RequestMessage(String senderId, Type type, String message) {
         super(senderId, type);
+        this.message = message;
     }
 
     public String getMessage() {

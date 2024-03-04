@@ -130,8 +130,16 @@ public class Link {
                             data.getType(), destAddress, destPort, messageId, count++));
 
                     // sign the message and get the signature
-                    String key = "../KeyInfrastructure/node" + data.getSenderId() + "_privKey.priv";
-                    byte[] signature = RSASignature.sign(new Gson().toJson(data),key);
+                    // if its a client sending, the file is named clientX_privKey.priv
+                    byte[] signature = null;
+                    if (Integer.parseInt(data.getSenderId()) >= 20) {
+                        String key = "../KeyInfrastructure/client" + data.getSenderId() + "_privKey.priv";
+                        signature = RSASignature.sign(new Gson().toJson(data),key);
+                    }
+                    else{
+                        String key = "../KeyInfrastructure/node" + data.getSenderId() + "_privKey.priv";
+                        signature = RSASignature.sign(new Gson().toJson(data),key);
+                    }
 
                     unreliableSend(destAddress, destPort, data, signature);
 
@@ -211,8 +219,12 @@ public class Link {
             byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength() - 512);
             signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
             serialized = new String(messageBuffer);
-            message = new Gson().fromJson(serialized, Message.class);
-
+            // If the sender is a client (id >= 20), desiarialize the message to a RequestMessage
+            if (Integer.parseInt(new Gson().fromJson(serialized, Message.class).getSenderId()) >= 20) {
+                message = new Gson().fromJson(serialized, RequestMessage.class);
+            } else {
+                message = new Gson().fromJson(serialized, Message.class);
+            }
         }
 
         // should not be done this way but oh well TODO
@@ -240,8 +252,8 @@ public class Link {
             return data;
         }
 
-        // It's not an ACK -> Deserialize for the correct type
-        if (!local) {
+        // It's not an ACK -> Deserialize for the correct type (if not a client who sent)
+        if (!local && Integer.parseInt(senderId) < 20) {
             message = new Gson().fromJson(serialized, this.messageClass);
             // correct message type
             data.setMessage(message);

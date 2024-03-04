@@ -363,7 +363,7 @@ public class NodeService implements UDPService {
                                 case APPEND ->  // placeholder
                                 {
                                     try {
-                                        startConsensus("a");
+                                        startConsensus(((RequestMessage) message).getMessage());
                                     } catch (Exception e) {
                                         throw new RuntimeException(e);
                                     }
@@ -377,7 +377,6 @@ public class NodeService implements UDPService {
                                     }
                                 }
 
-
                                 case PREPARE -> {
                                     try {
                                         uponPrepare((ConsensusMessage) message);
@@ -385,7 +384,6 @@ public class NodeService implements UDPService {
                                         throw new RuntimeException(e);
                                     }
                                 }
-
 
                                 case COMMIT -> {
                                     try {
@@ -408,7 +406,6 @@ public class NodeService implements UDPService {
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received unknown message from {1}",
                                                     config.getId(), message.getSenderId()));
-
                             }
 
                         }).start();
