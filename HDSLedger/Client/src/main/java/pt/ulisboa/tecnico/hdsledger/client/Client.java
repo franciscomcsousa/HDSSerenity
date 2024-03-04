@@ -39,8 +39,12 @@ public class Client {
             // Create the client library and wait for replies
             final ClientService clientService = new ClientService(clientConfig, nodeConfigs);
             clientService.listen();
+
+            // TODO REMOVE LATER, FORCING A REQUEST FOR TESTING PURPOSES
+            clientService.append("teste");
             
-            LOGGER.log(Level.INFO, "Client started. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
+            // TODO fix logger not working
+            System.out.println("Client started. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
 
             // Read user input
             Scanner scanner = new Scanner(System.in);

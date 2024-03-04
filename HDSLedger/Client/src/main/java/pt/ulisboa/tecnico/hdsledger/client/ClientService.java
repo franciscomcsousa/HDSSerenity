@@ -49,8 +49,7 @@ public class ClientService {
                 try{
                     while(true){
 
-                        Data data = linkToNodes.receive();
-                        Message message = data.getMessage();
+                        Message message = linkToNodes.receive();
 
                         // Case for each type of message
                         switch(message.getType()){
