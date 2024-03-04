@@ -1,20 +1,15 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
-import pt.ulisboa.tecnico.hdsledger.communication.Link;
-import pt.ulisboa.tecnico.hdsledger.communication.Message;
-import pt.ulisboa.tecnico.hdsledger.communication.RequestMessage;
-import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
-import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
-
 import java.text.MessageFormat;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.logging.Level;
 
 //
-//  not a real client, temporary base for testing purposes
+//  Client who sends requests to the blockchain
 //
 public class Client {
 
@@ -40,25 +35,45 @@ public class Client {
 
             // Nodes in Blockchain instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
-            ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
 
-            System.out.println(clientConfig.getPort());
-
-            // Abstraction to send and receive messages
-            Link linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, RequestMessage.class);
-            // Services that implement listen from UDPService
-            NodeService clientService = new NodeService(linkToNodes, clientConfig, leaderConfig,
-                    nodeConfigs);
-
-            RequestMessage requestMessage = new RequestMessage(clientConfig.getId(), Message.Type.APPEND, "teste");
-
-            // Signature
-            byte[] signature = RSASignature.sign(requestMessage.toString(), clientConfig.getId());
-
-            // TODO - future implementation for library communications
-            linkToNodes.send(leaderConfig.getId(),requestMessage);
+            // Create the client library and wait for replies
+            final ClientService clientService = new ClientService(clientConfig, nodeConfigs);
             clientService.listen();
+            
+            LOGGER.log(Level.INFO, "Client started. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
 
+            // Read user input
+            Scanner scanner = new Scanner(System.in);
+            String input = "";
+
+            System.out.println();
+            System.out.print(">> ");
+
+            while(true){
+                
+                input = scanner.nextLine();
+
+                // If the input is empty, ignore it
+                if(input.isEmpty()) continue;
+
+                String[] splitInput = input.split(" ");
+
+                // Case for each user input
+                switch(splitInput[0]){
+                    case "append":
+                        if (splitInput.length != 2) {
+                            System.out.println("Invalid command. Type 'append <value>' to append a value to the blockchain.");
+                            break;
+                        }
+                        clientService.append(splitInput[1]);
+                        break;
+                    case "quit":
+                        scanner.close();
+                        System.exit(0);
+                    default:
+                        System.out.println("Invalid command. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
+                }
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
