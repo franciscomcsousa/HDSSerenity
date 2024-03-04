@@ -141,16 +141,12 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public void uponPrePrepare(ConsensusMessage message, byte[] signature) throws Exception {
+    public void uponPrePrepare(ConsensusMessage message) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
-
-        boolean isOK = RSASignature.verifySign(new Gson().toJson(message), signature, message.getSenderId());
-
-        System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
 
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
 
@@ -351,9 +347,7 @@ public class NodeService implements UDPService {
                 try {
                     while (true) {
 
-                        Data data = link.receive();
-                        Message message = data.getMessage();
-                        byte[] signature = data.getSignature();;
+                        Message message = link.receive();
 
                         // Separate thread to handle each message
                         new Thread(() -> {
@@ -370,7 +364,7 @@ public class NodeService implements UDPService {
 
                                 case PRE_PREPARE -> {
                                     try {
-                                        uponPrePrepare((ConsensusMessage) message, signature);
+                                        uponPrePrepare((ConsensusMessage) message);
                                     } catch (Exception e) {
                                         throw new RuntimeException(e);
                                     }
