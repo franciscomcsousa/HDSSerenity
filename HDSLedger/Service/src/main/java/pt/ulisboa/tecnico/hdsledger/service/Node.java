@@ -2,16 +2,14 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
-import pt.ulisboa.tecnico.hdsledger.communication.Message;
-import pt.ulisboa.tecnico.hdsledger.communication.RequestMessage;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
-import pt.ulisboa.tecnico.hdsledger.utilities.CollapsingSet;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
 
 import java.text.MessageFormat;
 import java.util.Arrays;
+import java.util.TimerTask;
 import java.util.logging.Level;
 
 public class Node {
@@ -20,7 +18,27 @@ public class Node {
 
     // Hardcoded path to nodes and clients files
     private static String nodesConfigPath = "src/main/resources/";
-    private static String clientConfigPath = "../Client/src/main/resources/client_config.json";
+    private final static String clientConfigPath = "../Client/src/main/resources/client_config.json";
+    private static NodeService nodeService;
+
+    // Class needs to be created in order for the scheduler do use it
+    // runs the roundChange
+    // TODO - confirm if its the best way to go about this
+    public static class RoundTimer extends TimerTask {
+        // Does NOT create a new thread !
+        @Override
+        public void run() {
+            System.out.println("\n======== TIMER EXPIRED ========\n");
+
+            // should not be a problem, because of there's only ONE TIMER in each nodeService
+            // even though there might be multiple threads doing other things
+
+                // not sure if this is needed
+                //Node.nodeService.notify();
+                Node.nodeService.roundChange();
+
+        }
+    }
 
     public static void main(String[] args) {
 
@@ -51,13 +69,15 @@ public class Node {
 
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
-            NodeService nodeService = new NodeService(linkToAllNodes, nodeConfig, leaderConfig,
+            nodeService = new NodeService(linkToAllNodes, nodeConfig, leaderConfig,
                     allConfigs);
 
             // TODO - future implementation for library
             
             // Start listening for requests
-            nodeService.listen();
+
+                nodeService.listen();
+
 
         } catch (Exception e) {
             e.printStackTrace();

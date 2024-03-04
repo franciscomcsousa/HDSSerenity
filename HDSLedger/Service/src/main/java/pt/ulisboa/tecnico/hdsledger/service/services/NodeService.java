@@ -2,10 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -13,6 +10,7 @@ import java.util.logging.Level;
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.service.Node;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
@@ -47,8 +45,12 @@ public class NodeService implements UDPService {
     // Last decided consensus instance
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
+    private Timer timerConsensus;
 
-    // Ledger (for now, just a list of strings)
+    // for now consensus should take max timerMilliseconds
+    private final int timerMillis = 200;
+
+        // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
     public NodeService(Link link, ProcessConfig config,
@@ -126,9 +128,15 @@ public class NodeService implements UDPService {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            ConsensusMessage m = this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound());
 
+            ConsensusMessage m = this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound());
             this.link.broadcast(m);
+
+            // Set the timer of a new consensus for the leader
+            // and a call for the RoundTimer class
+            this.timerConsensus = new Timer();
+            timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
+
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -141,16 +149,12 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public void uponPrePrepare(ConsensusMessage message, byte[] signature) throws Exception {
+    public void uponPrePrepare(ConsensusMessage message) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
-
-        boolean isOK = RSASignature.verifySign(new Gson().toJson(message), signature, message.getSenderId());
-
-        System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
 
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
 
@@ -190,6 +194,13 @@ public class NodeService implements UDPService {
                 .build();
 
         this.link.broadcast(consensusMessage);
+
+        // Set the timer of a new consensus for the node
+        // and a call for the RoundTimer class
+        if (!senderId.equals(config.getId())) {
+            this.timerConsensus = new Timer();
+            timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
+        }
     }
 
     /*
@@ -340,7 +351,21 @@ public class NodeService implements UDPService {
                     MessageFormat.format(
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
                             config.getId(), consensusInstance, round, true));
+
+            // Cancels the timer of the consensus when a quorum of commits
+            // is acquired
+            timerConsensus.cancel();
+            timerConsensus.purge();
         }
+    }
+
+    /*
+     * TODO
+     * Handle roundChange messages and decide if there is a valid quorum
+     *
+     */
+    public synchronized void roundChange() {
+        System.out.println("\n----- Round change logic -----\n");
     }
 
     @Override
@@ -351,9 +376,7 @@ public class NodeService implements UDPService {
                 try {
                     while (true) {
 
-                        Data data = link.receive();
-                        Message message = data.getMessage();
-                        byte[] signature = data.getSignature();;
+                        Message message = link.receive();
 
                         // Separate thread to handle each message
                         new Thread(() -> {
@@ -370,7 +393,7 @@ public class NodeService implements UDPService {
 
                                 case PRE_PREPARE -> {
                                     try {
-                                        uponPrePrepare((ConsensusMessage) message, signature);
+                                        uponPrePrepare((ConsensusMessage) message);
                                     } catch (Exception e) {
                                         throw new RuntimeException(e);
                                     }
