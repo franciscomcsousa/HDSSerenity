@@ -74,9 +74,10 @@ public class Link {
      *
      * @param data The message to be broadcasted
      */
-    public void broadcast(Message data, byte[] signature) {
+    public void broadcast(Message data) {
         Gson gson = new Gson();
-        nodes.forEach((destId, dest) -> send(destId, gson.fromJson(gson.toJson(data), data.getClass()), signature));
+
+        nodes.forEach((destId, dest) -> send(destId, gson.fromJson(gson.toJson(data), data.getClass())));
     }
 
     /*
@@ -88,7 +89,7 @@ public class Link {
      *
      * @param signature The message to be sent
      */
-    public void send(String nodeId, Message data, byte[] signature ) {
+    public void send(String nodeId, Message data) {
 
         // Spawn a new thread to send the message
         // To avoid blocking while waiting for ACK
@@ -123,6 +124,10 @@ public class Link {
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
 
+                    // sign the message and get the signature
+                    String key = "../KeyInfrastructure/node" + data.getSenderId() + "_privKey.priv";
+                    byte[] signature = RSASignature.sign(new Gson().toJson(data),key);
+
                     unreliableSend(destAddress, destPort, data, signature);
 
                     // Wait (using exponential back-off), then look for ACK
@@ -139,6 +144,8 @@ public class Link {
                         config.getId(), data.getType(), destAddress, destPort));
             } catch (InterruptedException | UnknownHostException e) {
                 e.printStackTrace();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
     }
@@ -158,14 +165,12 @@ public class Link {
         new Thread(() -> {
             try {
 
-                //System.out.println("Signature size: "+ signature.length); // Should always be 512
-                //System.out.println("Message size: "+ (new Gson().toJson(data).getBytes()).length);
                 ByteArrayOutputStream totalBuf = new ByteArrayOutputStream();
+
                 totalBuf.write(new Gson().toJson(data).getBytes());
                 totalBuf.write(signature);
 
                 byte[] buf = totalBuf.toByteArray();
-                //System.out.println("BUFFER size: "+ buf.length);
 
                 DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
                 socket.send(packet);
@@ -179,13 +184,14 @@ public class Link {
     /*
      * Receives a message from any node in the network (blocking)
      */
-    public Data receive() throws IOException, ClassNotFoundException {
+    public Data receive() throws Exception {
 
         Message message = null;
         byte[] signature = null;
         String serialized = "";
         Boolean local = false;
         DatagramPacket response = null;
+
 
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
@@ -204,8 +210,16 @@ public class Link {
 
         }
 
+        // should not be done this way but oh well TODO
+        // basically when the owner of the message receives its message, makes a signature on the spot
+        if (local) {
+            String key = "../KeyInfrastructure/node" + message.getSenderId() + "_privKey.priv";
+            signature = RSASignature.sign(new Gson().toJson(message),key);
+        }
+
         // Data creation: message + signature
         Data data = new Data(message, signature);
+
 
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
@@ -222,18 +236,22 @@ public class Link {
         }
 
         // It's not an ACK -> Deserialize for the correct type
-        if (!local)
+        if (!local) {
             message = new Gson().fromJson(serialized, this.messageClass);
+            // correct message type
+            data.setMessage(message);
+        }
 
-        // correct message type
-        data.setMessage(message);
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
         // Message already received (add returns false if already exists) => Discard
         if (isRepeated) {
             message.setType(Type.IGNORE);
+            // correct message type
+            data.setMessage(message);
         }
+
 
         switch (message.getType()) {
             case PRE_PREPARE -> {
@@ -269,9 +287,11 @@ public class Link {
             // we're assuming an eventually synchronous network
             // Even if a node receives the message multiple times,
             // it will discard duplicates
-            // TODO, right now its sending an empty signature oopps
-            signature = new byte[512];
-            unreliableSend(address, port, responseMessage, signature);
+
+            String key = "../KeyInfrastructure/node" + responseMessage.getSenderId() + "_privKey.priv";
+            byte[] ackSignature = RSASignature.sign(new Gson().toJson(responseMessage),key);
+
+            unreliableSend(address, port, responseMessage, ackSignature);
         }
         
         return data;

@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
@@ -46,7 +47,6 @@ public class NodeService implements UDPService {
     // Last decided consensus instance
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
-    private final String privKeyPath;
 
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
@@ -61,7 +61,6 @@ public class NodeService implements UDPService {
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
-        this.privKeyPath = "../KeyInfrastructure/node" + config.getId() + "_privKey.priv";
     }
 
     public ProcessConfig getConfig() {
@@ -128,8 +127,8 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
             ConsensusMessage m = this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound());
-            byte[] signature = RSASignature.sign(m.toString(),this.privKeyPath);
-            this.link.broadcast(m,signature);
+
+            this.link.broadcast(m);
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -142,12 +141,17 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public void uponPrePrepare(ConsensusMessage message) throws Exception {
+    public void uponPrePrepare(ConsensusMessage message, byte[] signature) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
+
+        boolean isOK = RSASignature.verifySign(new Gson().toJson(message), signature,
+                "../KeyInfrastructure/node" + senderId + "_pubKey.pub");
+
+        System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
 
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
 
@@ -186,8 +190,7 @@ public class NodeService implements UDPService {
                 .setReplyToMessageId(senderMessageId)
                 .build();
 
-        byte[] signature = RSASignature.sign(consensusMessage.toString(),this.privKeyPath);
-        this.link.broadcast(consensusMessage, signature);
+        this.link.broadcast(consensusMessage);
     }
 
     /*
@@ -236,9 +239,7 @@ public class NodeService implements UDPService {
                     .setMessage(instance.getCommitMessage().toJson())
                     .build();
 
-            byte[] signature = RSASignature.sign(m.toString(),this.privKeyPath);
-            System.out.println("This is the message: " + m.toString());
-            link.send(senderId, m, signature);
+            link.send(senderId, m);
             return;
         }
 
@@ -264,9 +265,7 @@ public class NodeService implements UDPService {
                         .setMessage(c.toJson())
                         .build();
 
-                //RSASignature.sign(m,)
-                byte[] signature = RSASignature.sign(m.toString(), this.privKeyPath);
-                link.send(senderMessage.getSenderId(), m, signature);
+                link.send(senderMessage.getSenderId(), m);
             }
         }
     }
@@ -372,7 +371,7 @@ public class NodeService implements UDPService {
 
                                 case PRE_PREPARE -> {
                                     try {
-                                        uponPrePrepare((ConsensusMessage) message);
+                                        uponPrePrepare((ConsensusMessage) message, signature);
                                     } catch (Exception e) {
                                         throw new RuntimeException(e);
                                     }
@@ -412,6 +411,8 @@ public class NodeService implements UDPService {
                     }
                 } catch (IOException | ClassNotFoundException e) {
                     e.printStackTrace();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             }).start();
         } catch (Exception e) {

@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.utilities;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -56,21 +57,27 @@ public class RSASignature {
 //    }
 
     public static byte[] sign(String message, String privKeyPath) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hashedData = digest.digest(message.getBytes(StandardCharsets.UTF_8));
+
         PrivateKey privateKey = getPrivateKey(privKeyPath);
 
         Signature privateSignature = Signature.getInstance("SHA256withRSA");
         privateSignature.initSign(privateKey);
-        privateSignature.update(message.getBytes(UTF_8));
-
-        //byte[] signature = privateSignature.sign();
+        privateSignature.update(hashedData);
 
         return privateSignature.sign();
     }
 
-    public static boolean verifySign(String plainText, byte[] signature, PublicKey publicKey) throws Exception {
+    public static boolean verifySign(String message, byte[] signature, String pubKeyPath) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hashedData = digest.digest(message.getBytes(StandardCharsets.UTF_8));
+
+        PublicKey publicKey = getPublicKey(pubKeyPath);
+
         Signature publicSignature = Signature.getInstance("SHA256withRSA");
         publicSignature.initVerify(publicKey);
-        publicSignature.update(plainText.getBytes(UTF_8));
+        publicSignature.update(hashedData);
 
         // returns boolean
         return publicSignature.verify(signature);
