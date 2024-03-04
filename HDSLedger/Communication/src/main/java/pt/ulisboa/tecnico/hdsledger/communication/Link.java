@@ -77,7 +77,12 @@ public class Link {
     public void broadcast(Message data) {
         Gson gson = new Gson();
 
-        nodes.forEach((destId, dest) -> send(destId, gson.fromJson(gson.toJson(data), data.getClass())));
+        nodes.forEach((destId, dest) -> {
+            // If it isn't a client node, broadcast the message
+            if(Integer.parseInt(destId) < 20) {
+                send(destId, gson.fromJson(gson.toJson(data), data.getClass()));
+            }
+        });
     }
 
     /*
