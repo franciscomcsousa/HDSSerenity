@@ -1,13 +1,13 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
-import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
@@ -15,7 +15,6 @@ import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
-import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
 
 public class NodeService implements UDPService {
 
@@ -365,29 +364,47 @@ public class NodeService implements UDPService {
     /*
      * TODO
      * Handle roundChange messages and decide if there is a valid quorum
-     *
+     * @param message Message to be handled
      */
-    public synchronized void uponRoundChange() {
+    public synchronized void uponRoundChange(ConsensusMessage message) {
         /*  ri ← ri + 1
             set timeri to running and expire after t(ri)
             broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
         */
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+        String senderId = message.getSenderId();
 
+        RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
+
+        int preparedRound = roundChangeMessage.getPreparedRound();
+        String preparedValue = roundChangeMessage.getPreparedValue();
+
+        LOGGER.log(Level.INFO,
+                MessageFormat.format(
+                        "{0} - Received ROUND-CHANGE message from {1}: Consensus Instance {2}, Round {3}",
+                        config.getId(), senderId, consensusInstance, round));
+
+        // Doesn't add duplicate messages
+        roundChangeMessages.addMessage(message);
+
+        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+        // TODO - Work in progress
     }
-
-
-
 
     /*
      * Timer has expired, send a request for a round change to the others
      */
-    public synchronized void roundChange() {
+    public synchronized void uponTimerExpiry() {
         /*  ri ← ri + 1
             set timeri to running and expire after t(ri)
             broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
         */
 
-        int localConsensusInstance = this.consensusInstance.incrementAndGet();
+        // TODO - why increment instance?
+        //int localConsensusInstance = this.consensusInstance.incrementAndGet();
+        int localConsensusInstance = this.consensusInstance.get() + 1;
         InstanceInfo existingConsensus = this.instanceInfo.get(localConsensusInstance);
 
         if (existingConsensus == null) {
@@ -395,6 +412,10 @@ public class NodeService implements UDPService {
             // not sure WHY the timer goes out before the consensus is initiated ???
             return;
         }
+
+        // TODO - are both of these right?
+        int preparedRound = existingConsensus.getCurrentRound();
+        String preparedValue = existingConsensus.getPreparedValue();
 
         // Increment the round in the instanceInfo of the node
         existingConsensus.incrementCurrentRound();
@@ -405,10 +426,10 @@ public class NodeService implements UDPService {
         int round = existingConsensus.getCurrentRound();
 
         LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Sending ROUND_CHANGE message: Consensus Instance {1}, NOW Round {2}",
+                MessageFormat.format("{0} - Broadcast ROUND_CHANGE message: Consensus Instance {1}, NOW Round {2}",
                         config.getId(), consensusInstance, round));
 
-        RoundChangeMessage roundChangeMessage = new RoundChangeMessage(value);
+        RoundChangeMessage roundChangeMessage = new RoundChangeMessage(preparedRound, preparedValue);
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
                 .setConsensusInstance(localConsensusInstance)

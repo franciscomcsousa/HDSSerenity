@@ -3,15 +3,24 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 import com.google.gson.Gson;
 
 public class RoundChangeMessage {
-    // Value
-    private String value;
 
-    public RoundChangeMessage(String value) {
-        this.value = value;
+    // Prepared round
+    private int preparedRound;
+
+    // Prepared value
+    private String preparedValue;
+
+    public RoundChangeMessage(int preparedRound, String preparedValue){
+        this.preparedRound = preparedRound;
+        this.preparedValue = preparedValue;
     }
 
-    public String getValue() {
-        return value;
+    public int getPreparedRound() {
+        return preparedRound;
+    }
+
+    public String getPreparedValue() {
+        return preparedValue;
     }
 
     public String toJson() {

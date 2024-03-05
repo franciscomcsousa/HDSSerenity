@@ -272,7 +272,7 @@ public class Link {
                 if (!originalType.equals(Type.COMMIT))
                     return message;
             }
-            case PREPARE -> {
+            case PREPARE, ROUND_CHANGE -> {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
                 if (consensusMessage.getReplyTo() != null && consensusMessage.getReplyTo().equals(config.getId()))
                     receivedAcks.add(consensusMessage.getReplyToMessageId());

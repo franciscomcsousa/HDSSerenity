@@ -35,7 +35,7 @@ public class Node {
 
             // not sure if this is needed
             //Node.nodeService.notify();
-            Node.nodeService.roundChange();
+            Node.nodeService.uponTimerExpiry();
 
         }
     }
