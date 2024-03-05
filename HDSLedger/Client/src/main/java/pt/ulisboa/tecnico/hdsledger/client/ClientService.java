@@ -1,27 +1,15 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
-import com.google.gson.Gson;
-
 import pt.ulisboa.tecnico.hdsledger.communication.*;
-import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-
-// TODO remove useless imports after finishing the implementation
 
 //
 // Client library used as a bridge between the client and the nodes in the blockchain
 //
 public class ClientService {
-
-    private static final CustomLogger LOGGER = new CustomLogger(ClientService.class.getName());
     
     private final ProcessConfig clientConfig;
     private final ProcessConfig[] nodeConfigs;

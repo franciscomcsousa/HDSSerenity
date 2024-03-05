@@ -43,13 +43,11 @@ public class Client {
             // TODO REMOVE LATER, FORCING A REQUEST FOR TESTING PURPOSES
             clientService.append("teste");
             
-            // TODO fix logger not working
-            System.out.println("Client started. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
-
             // Read user input
             Scanner scanner = new Scanner(System.in);
             String input = "";
-
+            
+            System.out.println("Client started. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
             System.out.println();
             System.out.print(">> ");
 
