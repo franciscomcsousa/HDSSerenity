@@ -260,7 +260,7 @@ public class Link {
         if (!local) {
             boolean isOK = RSASignature.verifySign(message.getSignable(), signature, message.getSenderId());
 
-            System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
+            //System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
         }
 
 

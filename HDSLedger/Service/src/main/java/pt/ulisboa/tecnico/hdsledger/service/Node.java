@@ -28,14 +28,14 @@ public class Node {
         // Does NOT create a new thread !
         @Override
         public void run() {
-            System.out.println("\n======== TIMER EXPIRED ========\n");
+            System.out.println("======== TIMER EXPIRED ========\n\n");
 
             // should not be a problem, because of there's only ONE TIMER in each nodeService
             // even though there might be multiple threads doing other things
 
-                // not sure if this is needed
-                //Node.nodeService.notify();
-                Node.nodeService.roundChange();
+            // not sure if this is needed
+            //Node.nodeService.notify();
+            Node.nodeService.roundChange();
 
         }
     }

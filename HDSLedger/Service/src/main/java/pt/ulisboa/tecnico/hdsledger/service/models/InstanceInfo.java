@@ -24,6 +24,8 @@ public class InstanceInfo {
         this.currentRound = currentRound;
     }
 
+    public void incrementCurrentRound() { this.currentRound++; }
+
     public int getPreparedRound() {
         return preparedRound;
     }

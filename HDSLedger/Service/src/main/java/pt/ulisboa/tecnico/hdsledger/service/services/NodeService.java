@@ -35,6 +35,8 @@ public class NodeService implements UDPService {
     private final MessageBucket prepareMessages;
     // Consensus instance -> Round -> List of commit messages
     private final MessageBucket commitMessages;
+    // Consensus instance -> Round -> List of roundChange messages
+    private final MessageBucket roundChangeMessages;
 
     // Store if already received pre-prepare for a given <consensus, round>
     private final Map<Integer, Map<Integer, Boolean>> receivedPrePrepare = new ConcurrentHashMap<>();
@@ -48,7 +50,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // for now consensus should take max timerMilliseconds
-    private final int timerMillis = 200;
+    private final int timerMillis = 600;
 
         // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
@@ -63,6 +65,7 @@ public class NodeService implements UDPService {
 
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
+        this.roundChangeMessages = new MessageBucket(nodesConfig.length);
     }
 
     public ProcessConfig getConfig() {
@@ -364,8 +367,64 @@ public class NodeService implements UDPService {
      * Handle roundChange messages and decide if there is a valid quorum
      *
      */
+    public synchronized void uponRoundChange() {
+        /*  ri ← ri + 1
+            set timeri to running and expire after t(ri)
+            broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
+        */
+
+    }
+
+
+
+
+    /*
+     * Timer has expired, send a request for a round change to the others
+     */
     public synchronized void roundChange() {
-        System.out.println("\n----- Round change logic -----\n");
+        /*  ri ← ri + 1
+            set timeri to running and expire after t(ri)
+            broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
+        */
+
+        int localConsensusInstance = this.consensusInstance.incrementAndGet();
+        InstanceInfo existingConsensus = this.instanceInfo.get(localConsensusInstance);
+
+        if (existingConsensus == null) {
+            // TODO
+            // not sure WHY the timer goes out before the consensus is initiated ???
+            return;
+        }
+
+        // Increment the round in the instanceInfo of the node
+        existingConsensus.incrementCurrentRound();
+        this.instanceInfo.put(localConsensusInstance, existingConsensus);
+
+        // just to be clearer to read
+        String value = existingConsensus.getInputValue();
+        int round = existingConsensus.getCurrentRound();
+
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Sending ROUND_CHANGE message: Consensus Instance {1}, NOW Round {2}",
+                        config.getId(), consensusInstance, round));
+
+        RoundChangeMessage roundChangeMessage = new RoundChangeMessage(value);
+
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                .setConsensusInstance(localConsensusInstance)
+                .setRound(round)
+                .setMessage(roundChangeMessage.toJson())
+                .build();
+
+        this.link.broadcast(consensusMessage);
+
+        // Reset the timer of the consensus for this node
+        // because it is trying for a new round
+        this.timerConsensus.cancel();
+        this.timerConsensus.purge();
+
+        this.timerConsensus = new Timer();
+        timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
     }
 
     @Override
