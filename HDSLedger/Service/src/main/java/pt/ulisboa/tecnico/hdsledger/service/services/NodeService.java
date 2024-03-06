@@ -139,6 +139,7 @@ public class NodeService implements UDPService {
             // and a call for the RoundTimer class
             this.timerConsensus = new Timer();
             timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
+            timerInstance = localConsensusInstance;
 
         } else {
             LOGGER.log(Level.INFO,
