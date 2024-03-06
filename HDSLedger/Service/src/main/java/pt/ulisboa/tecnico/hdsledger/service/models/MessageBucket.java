@@ -18,7 +18,7 @@ public class MessageBucket {
     private final int quorumSize;
 
     // f + 1 quorum size
-    private final int smalQuorumSize;
+    private final int smallQuorumSize;
 
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
@@ -26,7 +26,7 @@ public class MessageBucket {
     public MessageBucket(int nodeCount) {
         int f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
-        smalQuorumSize = f + 1;
+        smallQuorumSize = f + 1;
     }
 
     /*
@@ -94,7 +94,7 @@ public class MessageBucket {
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
         return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
-            return entry.getValue() >= smalQuorumSize;
+            return entry.getValue() >= smallQuorumSize;
         }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();

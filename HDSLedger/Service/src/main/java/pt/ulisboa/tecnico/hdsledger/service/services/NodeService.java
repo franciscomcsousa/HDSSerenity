@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
-import java.io.Serial;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,7 +24,7 @@ public class NodeService implements UDPService {
     // Current node is leader
     private final ProcessConfig config;
     // Leader configuration
-    private final ProcessConfig leaderConfig;
+    private ProcessConfig leaderConfig;
 
     // Link to communicate with nodes
     private final Link link;
@@ -49,7 +48,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // for now consensus should take max timerMilliseconds
-    private final int timerMillis = 600;
+    private final int timerMillis = 5000;
 
         // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
@@ -407,12 +406,44 @@ public class NodeService implements UDPService {
 
             // Verify if it has received Quorum, ROUND_CHANGE messages
             // if it has, TODO - JustifyRoundChange
-            // TODO - and in case its the new leader starts consensus ?
             roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
             if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
 
-                // TODO - broadcast preprepare ?, maybe a call to start consensus !
-                //this.link.broadcast(consensusMessage);
+                System.out.println("ROUND CHANGE QUORUM RECEIVED!");
+
+                // Update the leader of the consensus (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
+                Arrays.stream(nodesConfig).filter(ProcessConfig::isLeader).findAny().get().setLeader(false);
+                int currentLeaderId = Integer.parseInt(leaderConfig.getId());
+                String newLeaderId;
+                if (currentLeaderId + 1 > nodesConfig.length) {
+                    newLeaderId = "1";
+                } else {
+                    newLeaderId = Integer.toString(currentLeaderId + 1);
+                }
+                Arrays.stream(nodesConfig).filter(c -> c.getId().equals(newLeaderId)).findAny().get().setLeader(true);
+                leaderConfig = Arrays.stream(nodesConfig).filter(ProcessConfig::isLeader).findAny().get();
+                
+                // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
+                // The value of the new consensus is the highest prepared value of the Quorum if it exists,
+                // otherwise the value is the one passed as input to this instance
+                if (config.isLeader()) {
+
+                    String value = instance.getPreparedValue();
+                    if (value == null) {
+                        value = instance.getInputValue();
+                    }
+                    // Start a new consensus by broadcasting a PRE-PREPARE message
+                    LOGGER.log(Level.INFO,
+                        MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+                    
+                    ConsensusMessage m = this.createConsensusMessage(value, consensusInstance, instance.getCurrentRound());
+
+                    this.link.broadcast(m);
+                }
+                else {
+                    LOGGER.log(Level.INFO,
+                        MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+                }
             }
 
             // Reset the timer of the consensus for this node

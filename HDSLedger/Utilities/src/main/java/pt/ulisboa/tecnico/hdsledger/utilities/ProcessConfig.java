@@ -15,6 +15,10 @@ public class ProcessConfig {
         return isLeader;
     }
 
+    public void setLeader(boolean newIsLeader) {
+        this.isLeader = newIsLeader;
+    }
+
     public int getPort() {
         return port;
     }
