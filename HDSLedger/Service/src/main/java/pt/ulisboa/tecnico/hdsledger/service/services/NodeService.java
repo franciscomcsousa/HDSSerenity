@@ -49,7 +49,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 5000;
+    private final int timerMillis = 700;
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
 

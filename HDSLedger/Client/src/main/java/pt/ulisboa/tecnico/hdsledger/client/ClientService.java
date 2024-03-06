@@ -26,8 +26,8 @@ public class ClientService {
     public void append(String value) {
 
         RequestMessage requestMessage = new RequestMessage(clientConfig.getId(), Message.Type.APPEND, value);
-        ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
-        linkToNodes.send(leaderConfig.getId(), requestMessage);
+        //ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
+        linkToNodes.broadcast(requestMessage);
     }
 
     // Listen for replies from the nodes
