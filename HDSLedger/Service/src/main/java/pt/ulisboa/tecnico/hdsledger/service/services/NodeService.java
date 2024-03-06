@@ -44,13 +44,15 @@ public class NodeService implements UDPService {
     private final AtomicInteger consensusInstance = new AtomicInteger(0);
     // Last decided consensus instance
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
-
+    // Timer to trigger round changes
     private Timer timerConsensus;
 
-    // for now consensus should take max timerMilliseconds
-    private final int timerMillis = 5000;
+    // Consensus should take max timerMilliseconds
+    private final int timerMillis = 650;
+    // Consensus instance to which the timer is counting
+    private int timerInstance = -1;
 
-        // Ledger (for now, just a list of strings)
+    // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
     public NodeService(Link link, ProcessConfig config,
@@ -201,6 +203,7 @@ public class NodeService implements UDPService {
         if (!senderId.equals(config.getId())) {
             this.timerConsensus = new Timer();
             timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
+            timerInstance = consensusInstance;
         }
     }
 
@@ -357,6 +360,7 @@ public class NodeService implements UDPService {
             // is acquired
             timerConsensus.cancel();
             timerConsensus.purge();
+            timerInstance = -1;
         }
     }
 
@@ -465,16 +469,13 @@ public class NodeService implements UDPService {
             broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
         */
 
-        // TODO - why increment instance?
-        //int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        int localConsensusInstance = this.consensusInstance.get() + 1;
-        InstanceInfo existingConsensus = this.instanceInfo.get(localConsensusInstance);
+        InstanceInfo existingConsensus = this.instanceInfo.get(timerInstance);
 
-        if (existingConsensus == null) {
+        /*if (existingConsensus == null) {
             // TODO
             // not sure WHY the timer goes out before the consensus is initiated ???
             return;
-        }
+        }*/
 
         // TODO - are both of these right?
         int preparedRound = existingConsensus.getCurrentRound();
@@ -482,7 +483,7 @@ public class NodeService implements UDPService {
 
         // Increment the round in the instanceInfo of the node
         existingConsensus.incrementCurrentRound();
-        this.instanceInfo.put(localConsensusInstance, existingConsensus);
+        this.instanceInfo.put(timerInstance, existingConsensus);
 
         // just to be clearer to read
         String value = existingConsensus.getInputValue();
@@ -495,7 +496,7 @@ public class NodeService implements UDPService {
         RoundChangeMessage roundChangeMessage = new RoundChangeMessage(preparedRound, preparedValue);
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
-                .setConsensusInstance(localConsensusInstance)
+                .setConsensusInstance(timerInstance)
                 .setRound(round)
                 .setMessage(roundChangeMessage.toJson())
                 .build();
@@ -523,7 +524,6 @@ public class NodeService implements UDPService {
 
                         // Separate thread to handle each message
                         new Thread(() -> {
-
                             switch (message.getType()) {
                                 case APPEND ->  // placeholder
                                 {
