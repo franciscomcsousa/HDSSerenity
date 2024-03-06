@@ -367,30 +367,62 @@ public class NodeService implements UDPService {
      * @param message Message to be handled
      */
     public synchronized void uponRoundChange(ConsensusMessage message) {
-        /*  ri ← ri + 1
-            set timeri to running and expire after t(ri)
-            broadcast 〈ROUND-CHANGE, λi, ri, pri, pvi〉
-        */
+
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
         String senderId = message.getSenderId();
+        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
         RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
-
-        int preparedRound = roundChangeMessage.getPreparedRound();
-        String preparedValue = roundChangeMessage.getPreparedValue();
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
                         "{0} - Received ROUND-CHANGE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
-        // Doesn't add duplicate messages
+        // verifies if the round change is bigger than the process current round
+        if (instance.getCurrentRound() < round)
+            return;
+
         roundChangeMessages.addMessage(message);
 
-        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+        // Verify if it has received f + 1, ROUND_CHANGE messages
+        // if it has, broadcasts the message to all,
+        // updates the round value
+        Optional<String> roundChangeValue = roundChangeMessages.hasValidSmallRoundChangeQuorum(config.getId(), consensusInstance, round);
+        if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+            instance.setPreparedValue(roundChangeValue.get());
+            instance.setPreparedRound(round);
 
-        // TODO - Work in progress
+            ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                    .setConsensusInstance(consensusInstance)
+                    .setRound(round)
+                    .setMessage(roundChangeMessage.toJson())
+                    .build();
+
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Has f + 1 round changes, sending ROUND_CHANGE message", config.getId()));
+
+            this.link.broadcast(consensusMessage);
+
+            // Verify if it has received Quorum, ROUND_CHANGE messages
+            // if it has, TODO - JustifyRoundChange
+            // TODO - and in case its the new leader starts consensus ?
+            roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+            if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+
+                // TODO - broadcast preprepare ?, maybe a call to start consensus !
+                //this.link.broadcast(consensusMessage);
+            }
+
+            // Reset the timer of the consensus for this node
+            // because it is trying for a new round
+            this.timerConsensus.cancel();
+            this.timerConsensus.purge();
+
+            this.timerConsensus = new Timer();
+            timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
+        }
     }
 
     /*
@@ -490,6 +522,14 @@ public class NodeService implements UDPService {
                                 case COMMIT -> {
                                     try {
                                         uponCommit((ConsensusMessage) message);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
+
+                                case ROUND_CHANGE -> {
+                                    try {
+                                        uponRoundChange((ConsensusMessage) message);
                                     } catch (Exception e) {
                                         throw new RuntimeException(e);
                                     }
