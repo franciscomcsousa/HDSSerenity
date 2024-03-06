@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,7 +49,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 650;
+    private final int timerMillis = 5000;
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
 
@@ -63,9 +64,16 @@ public class NodeService implements UDPService {
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
 
-        this.prepareMessages = new MessageBucket(nodesConfig.length);
-        this.commitMessages = new MessageBucket(nodesConfig.length);
-        this.roundChangeMessages = new MessageBucket(nodesConfig.length);
+        //Only count nodes that are not clients
+        this.prepareMessages = new MessageBucket(Arrays.stream(nodesConfig)
+            .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
+            .toArray(ProcessConfig[]::new).length);
+        this.commitMessages = new MessageBucket(Arrays.stream(nodesConfig)
+        .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
+        .toArray(ProcessConfig[]::new).length);
+        this.roundChangeMessages = new MessageBucket(Arrays.stream(nodesConfig)
+        .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
+        .toArray(ProcessConfig[]::new).length);
     }
 
     public ProcessConfig getConfig() {

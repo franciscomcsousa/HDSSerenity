@@ -71,8 +71,6 @@ public class Node {
             // Listen to the nodes in the blockChain
             nodeService = new NodeService(linkToAllNodes, nodeConfig, leaderConfig,
                     allConfigs);
-
-            // TODO - future implementation for library
             
             // Start listening for requests
 
