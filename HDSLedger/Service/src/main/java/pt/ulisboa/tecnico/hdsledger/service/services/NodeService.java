@@ -48,7 +48,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 2000;
+    private final int timerMillis = 3000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -386,6 +386,31 @@ public class NodeService implements UDPService {
     }
 
     /*
+     * Check if a PrePrepare is justified
+     *
+     */
+    public boolean justifyPrePrepare(String nodeId, int instance, int round){
+        return consensusInstance.get() == 1 || this.justifyRoundChange(nodeId, instance, round);
+    }
+
+    /*
+    * Check if a Round Change is justified
+    *
+     */
+    public boolean justifyRoundChange(String nodeId, int instance, int round){
+        if (roundChangeMessages.nonePreparedJustification(instance, round)) {
+            return true;
+        }
+
+        Optional<RoundChangeMessage> highestRoundChangeMessage = roundChangeMessages.highestPrepared(instance, round);
+        Optional<String> prepareQuorumValue = prepareMessages.hasValidPrepareQuorum(nodeId, instance, round);
+
+        return prepareQuorumValue.isPresent() &&
+                highestRoundChangeMessage.isPresent() &&
+                prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
+    }
+
+    /*
      * Handle roundChange messages and decide if there is a valid quorum
      * @param message Message to be handled
      */
@@ -417,11 +442,16 @@ public class NodeService implements UDPService {
         // Verify if it has received Quorum, ROUND_CHANGE messages
         // if it has, TODO - JustifyRoundChange
         roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
-        System.out.println("\nROUND CHANGE VALUE: " + roundChangeValue + "\n");
-        if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+        System.out.println("ROUND CHANGE QUORUM VALUE: " + roundChangeValue + "\n");
+
+        if (roundChangeValue.isPresent() &&
+                instance.getPreparedRound() < round &&
+                justifyRoundChange(config.getId(), consensusInstance, round)) {
+
             System.out.println("ROUND CHANGE QUORUM RECEIVED!");
 
-            // Update the leader of the consensus (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
+            // Update the leader of the consensus
+            // (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
             Arrays.stream(nodesConfig).forEach(
                     processConfig -> { if (isLeader(processConfig.getId())) processConfig.setLeader(false); }
             );
@@ -485,17 +515,10 @@ public class NodeService implements UDPService {
 
         InstanceInfo existingConsensus = this.instanceInfo.get(timerInstance);
 
-        /*if (existingConsensus == null) {
-            // TODO
-            // not sure WHY the timer goes out before the consensus is initiated ???
-            return;
-        }*/
-
-        // TODO - are both of these right?
-        int preparedRound = existingConsensus.getCurrentRound();
         // This needs to be either a string or an empty string, if this were to be null,
         // it would be mistaken for the null return of some <Optional>String return type functions
         String preparedValue = existingConsensus.getPreparedValue() != null ? existingConsensus.getPreparedValue() : "";
+        int preparedRound = existingConsensus.getPreparedValue() != null ? existingConsensus.getCurrentRound() : -1;
 
         // Increment the round in the instanceInfo of the node
         existingConsensus.incrementCurrentRound();
