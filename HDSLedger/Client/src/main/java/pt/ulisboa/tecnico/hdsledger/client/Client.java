@@ -39,9 +39,6 @@ public class Client {
             // Create the client library and wait for replies
             final ClientService clientService = new ClientService(clientConfig, nodeConfigs);
             clientService.listen();
-
-            // TODO REMOVE LATER, FORCING A REQUEST FOR TESTING PURPOSES
-            clientService.append("teste");
             
             // Read user input
             Scanner scanner = new Scanner(System.in);

@@ -49,7 +49,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 700;
+    private final int timerMillis = 2000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -144,16 +144,20 @@ public class NodeService implements UDPService {
             ConsensusMessage m = this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound());
             this.link.broadcast(m);
 
-            // Set the timer of a new consensus for the leader
-            // and a call for the RoundTimer class
-            this.timerConsensus = new Timer();
-            timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
-            timerInstance = localConsensusInstance;
-
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
+        // Set the timer of a new consensus for the leader
+        // and a call for the RoundTimer class
+        if (timerConsensus != null) {
+        timerConsensus.cancel();
+        timerConsensus.purge();
+        }
+
+        this.timerConsensus = new Timer();
+        timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
+        timerInstance = localConsensusInstance;
     }
 
     /*
@@ -211,6 +215,9 @@ public class NodeService implements UDPService {
         // Set the timer of a new consensus for the node
         // and a call for the RoundTimer class
         if (!senderId.equals(config.getId())) {
+            timerConsensus.cancel();
+            timerConsensus.purge();
+
             this.timerConsensus = new Timer();
             timerConsensus.schedule(new Node.RoundTimer(), timerMillis);
             timerInstance = consensusInstance;
@@ -239,15 +246,6 @@ public class NodeService implements UDPService {
 
         // Doesn't add duplicate messages
         prepareMessages.addMessage(message);
-
-        /*if (isLeader("1") && consensusInstance > 3)
-        {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "{0} - United agaisnt 1!",
-                            config.getId(), senderId, consensusInstance, round));
-            return;
-        }*/
 
         // Set instance values
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
@@ -439,7 +437,7 @@ public class NodeService implements UDPService {
             );
 
             leaderConfig = Arrays.stream(nodesConfig)
-                    .filter(processConfig -> isLeader(processConfig.getId()))
+                    .filter(processConfig -> processConfig.isLeader())
                     .findFirst().get();
 
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
