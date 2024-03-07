@@ -50,6 +50,7 @@ public class NodeService implements UDPService {
 
     // Consensus should take max timerMilliseconds
     private final int timerMillis = 700;
+    
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
 
@@ -239,6 +240,15 @@ public class NodeService implements UDPService {
         // Doesn't add duplicate messages
         prepareMessages.addMessage(message);
 
+        /*if (isLeader("1") && consensusInstance > 3)
+        {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - United agaisnt 1!",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
+        }*/
+
         // Set instance values
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
@@ -369,7 +379,6 @@ public class NodeService implements UDPService {
             // is acquired
             timerConsensus.cancel();
             timerConsensus.purge();
-            timerInstance = -1;
         }
     }
 
@@ -398,67 +407,61 @@ public class NodeService implements UDPService {
 
         roundChangeMessages.addMessage(message);
 
-        // Verify if it has received f + 1, ROUND_CHANGE messages
+        // TODO (again) - Verify if it has received f + 1, ROUND_CHANGE messages
         // if it has, broadcasts the message to all,
         // updates the round value
-        Optional<String> roundChangeValue = roundChangeMessages.hasValidSmallRoundChangeQuorum(config.getId(), consensusInstance, round);
+        Optional<String> roundChangeValue;
+
+        // Verify if it has received Quorum, ROUND_CHANGE messages
+        // if it has, TODO - JustifyRoundChange
+        roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        System.out.println("\nROUND CHANGE VALUE: " + roundChangeValue + "\n");
         if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
-            instance.setPreparedValue(roundChangeValue.get());
-            instance.setPreparedRound(round);
+            System.out.println("ROUND CHANGE QUORUM RECEIVED!");
 
-            ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
-                    .setConsensusInstance(consensusInstance)
-                    .setRound(round)
-                    .setMessage(roundChangeMessage.toJson())
-                    .build();
+            // Update the leader of the consensus (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
+            Arrays.stream(nodesConfig).forEach(
+                    processConfig -> { if (isLeader(processConfig.getId())) processConfig.setLeader(false); }
+            );
 
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format("{0} - Has f + 1 round changes, sending ROUND_CHANGE message", config.getId()));
+            int currentLeaderId = Integer.parseInt(leaderConfig.getId());
+            String newLeaderId;
 
-            this.link.broadcast(consensusMessage);
+            if (currentLeaderId + 1 > Arrays.stream(nodesConfig)
+                    .filter(processConfig -> Integer.parseInt(processConfig.getId()) < 20)
+                    .count())
+                newLeaderId = "1";
+            else
+                newLeaderId = Integer.toString(currentLeaderId + 1);
 
-            // Verify if it has received Quorum, ROUND_CHANGE messages
-            // if it has, TODO - JustifyRoundChange
-            roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
-            if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+            Arrays.stream(nodesConfig).forEach(
+                    processConfig -> { if (processConfig.getId().equals(newLeaderId)) processConfig.setLeader(true); }
+            );
 
-                System.out.println("ROUND CHANGE QUORUM RECEIVED!");
+            leaderConfig = Arrays.stream(nodesConfig)
+                    .filter(processConfig -> isLeader(processConfig.getId()))
+                    .findFirst().get();
 
-                // Update the leader of the consensus (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
-                Arrays.stream(nodesConfig).filter(ProcessConfig::isLeader).findAny().get().setLeader(false);
-                int currentLeaderId = Integer.parseInt(leaderConfig.getId());
-                String newLeaderId;
-                if (currentLeaderId + 1 > nodesConfig.length) {
-                    newLeaderId = "1";
-                } else {
-                    newLeaderId = Integer.toString(currentLeaderId + 1);
+            // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
+            // The value of the new consensus is the highest prepared value of the Quorum if it exists,
+            // otherwise the value is the one passed as input to this instance
+            if (config.isLeader()) {
+                String value = instance.getPreparedValue();
+                if (value == null) {
+                    value = instance.getInputValue();
                 }
-                Arrays.stream(nodesConfig).filter(c -> c.getId().equals(newLeaderId)).findAny().get().setLeader(true);
-                leaderConfig = Arrays.stream(nodesConfig).filter(ProcessConfig::isLeader).findAny().get();
-                
-                // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
-                // The value of the new consensus is the highest prepared value of the Quorum if it exists,
-                // otherwise the value is the one passed as input to this instance
-                if (config.isLeader()) {
+                // Start a new consensus by broadcasting a PRE-PREPARE message
+                LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
 
-                    String value = instance.getPreparedValue();
-                    if (value == null) {
-                        value = instance.getInputValue();
-                    }
-                    // Start a new consensus by broadcasting a PRE-PREPARE message
-                    LOGGER.log(Level.INFO,
-                        MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-                    
-                    ConsensusMessage m = this.createConsensusMessage(value, consensusInstance, instance.getCurrentRound());
+                ConsensusMessage m = this.createConsensusMessage(value, consensusInstance, instance.getCurrentRound());
 
-                    this.link.broadcast(m);
-                }
-                else {
-                    LOGGER.log(Level.INFO,
-                        MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
-                }
+                this.link.broadcast(m);
             }
-
+            else {
+                LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+            }
             // Reset the timer of the consensus for this node
             // because it is trying for a new round
             this.timerConsensus.cancel();
@@ -488,7 +491,9 @@ public class NodeService implements UDPService {
 
         // TODO - are both of these right?
         int preparedRound = existingConsensus.getCurrentRound();
-        String preparedValue = existingConsensus.getPreparedValue();
+        // This needs to be either a string or an empty string, if this were to be null,
+        // it would be mistaken for the null return of some <Optional>String return type functions
+        String preparedValue = existingConsensus.getPreparedValue() != null ? existingConsensus.getPreparedValue() : "";
 
         // Increment the round in the instanceInfo of the node
         existingConsensus.incrementCurrentRound();
