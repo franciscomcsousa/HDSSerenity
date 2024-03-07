@@ -18,7 +18,7 @@ public class ClientService {
     public ClientService(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
         this.clientConfig = clientConfig;
         this.nodeConfigs = nodeConfigs;
-        this.linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, RequestMessage.class);
+        this.linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, ResponseMessage.class);
     }
 
 
@@ -45,6 +45,14 @@ public class ClientService {
                                 System.out.println(MessageFormat.format("{0} - Received ACK message from {1}", clientConfig.getId(), message.getSenderId()));
                                 System.out.println();
                                 System.out.print(">> ");
+                                break;
+                            case RESPONSE:
+                                ResponseMessage responseMessage = (ResponseMessage) message;
+                                System.out.println(MessageFormat.format("{0} - Commit finished from {1} for value {2}", clientConfig.getId(), responseMessage.getSenderId(), responseMessage.getValue()));
+                                System.out.println();
+                                System.out.print(">> ");
+                                break;
+                            case IGNORE:
                                 break;
                             default:
                                 System.out.println("Unknown message type received");

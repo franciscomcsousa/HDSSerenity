@@ -23,7 +23,6 @@ public class Node {
 
     // Class needs to be created in order for the scheduler do use it
     // runs the roundChange
-    // TODO - confirm if its the best way to go about this
     public static class RoundTimer extends TimerTask {
         // Does NOT create a new thread !
         @Override

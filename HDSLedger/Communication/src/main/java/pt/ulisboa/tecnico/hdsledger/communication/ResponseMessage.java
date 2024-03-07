@@ -1,24 +1,24 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-public class RequestMessage extends Message {
-
+public class ResponseMessage extends Message {
+    
     // Consensus instance
     private int consensusInstance;
 
     // String value
-    private String message;
+    private String value;
 
-    public RequestMessage(String senderId, Type type, String message) {
+    public ResponseMessage(String senderId, Type type, String value) {
         super(senderId, type);
-        this.message = message;
+        this.value = value;
     }
 
-    public String getMessage() {
-        return message;
+    public String getValue() {
+        return value;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setValue(String value) {
+        this.value = value;
     }
 
     public int getConsensusInstance() {

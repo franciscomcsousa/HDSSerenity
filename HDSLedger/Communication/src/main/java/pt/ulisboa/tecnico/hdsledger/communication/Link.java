@@ -5,7 +5,6 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.Message.Type;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.text.MessageFormat;
@@ -85,6 +84,22 @@ public class Link {
         });
     }
 
+    /*
+     * Broadcasts a message to all clients in the network
+     *
+     * @param data The message to be broadcasted
+     */
+    public void broadcastToClients(Message data) {
+        Gson gson = new Gson();
+
+        nodes.forEach((destId, dest) -> {
+            // If it is a client node, broadcast the message
+            if(Integer.parseInt(destId) >= 20) {
+                send(destId, gson.fromJson(gson.toJson(data), data.getClass()));
+            }
+        });
+    }
+
     public boolean isSenderClient(int senderId) {
         return senderId >= 20;
     }
@@ -140,12 +155,9 @@ public class Link {
                     // sign the message and get the signature
                     // if its a client sending, the file is named clientX_privKey.priv
                     byte[] signature = null;
-                    int senderId = Integer.parseInt(data.getSenderId());
 
                     signature = RSASignature.sign(data.getSignable(), data.getSenderId());
                     data.setSignature(signature);
-
-                    // TODO - what about if the data sender id is bellow 0 - byzantine behaviour
 
                     unreliableSend(destAddress, destPort, data);
 

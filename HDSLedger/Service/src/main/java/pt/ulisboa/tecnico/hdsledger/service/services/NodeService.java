@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -373,6 +372,10 @@ public class NodeService implements UDPService {
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
                             config.getId(), consensusInstance, round, true));
 
+            // Broadcast to all the clients for now
+            ResponseMessage responseMessage = new ResponseMessage(config.getId(), Message.Type.RESPONSE, value);
+            link.broadcastToClients(responseMessage);
+            
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired
             timerConsensus.cancel();
@@ -381,7 +384,6 @@ public class NodeService implements UDPService {
     }
 
     /*
-     * TODO
      * Handle roundChange messages and decide if there is a valid quorum
      * @param message Message to be handled
      */
