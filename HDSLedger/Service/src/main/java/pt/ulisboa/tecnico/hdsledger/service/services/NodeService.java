@@ -28,6 +28,8 @@ public class NodeService implements UDPService {
 
     // Link to communicate with nodes
     private final Link link;
+    // Link to communicate with clients
+    private final Link clientLink;
 
     // Consensus instance -> Round -> List of prepare messages
     private final MessageBucket prepareMessages;
@@ -48,7 +50,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 2000;
+    private final int timerMillis = 3000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -56,10 +58,11 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
-    public NodeService(Link link, ProcessConfig config,
+    public NodeService(Link link, Link clientLink, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
 
         this.link = link;
+        this.clientLink = clientLink;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
@@ -111,7 +114,7 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(String message) throws Exception {
+    public void startConsensus(String message) {
         System.out.println("CONSENSUS STARTED!");
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -375,8 +378,13 @@ public class NodeService implements UDPService {
             // Broadcast to all the clients for now
             // Position of the new value in the ledger
             int position = ledger.size();
-            ResponseMessage responseMessage = new ResponseMessage(config.getId(), Message.Type.RESPONSE, value, position);
-            link.broadcastToClients(responseMessage);
+
+            ClientMessage clientMessage = new ClientMessage(config.getId(),Message.Type.RESPONSE);
+            clientMessage.setMessage(value);
+            clientMessage.setPosition(position);
+
+            // Respond to the clients
+            clientLink.broadcastToClients(clientMessage);
             
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired
@@ -541,14 +549,6 @@ public class NodeService implements UDPService {
                         // Separate thread to handle each message
                         new Thread(() -> {
                             switch (message.getType()) {
-                                case APPEND ->  // placeholder
-                                {
-                                    try {
-                                        startConsensus(((RequestMessage) message).getMessage());
-                                    } catch (Exception e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
 
                                 case PRE_PREPARE -> {
                                     try {

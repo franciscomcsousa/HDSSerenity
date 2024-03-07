@@ -78,10 +78,9 @@ public class Link {
 
         nodes.forEach((destId, dest) -> {
             // If it isn't a client node, broadcast the message
-            if(Integer.parseInt(destId) < 20) {
                 send(destId, gson.fromJson(gson.toJson(data), data.getClass()));
             }
-        });
+        );
     }
 
     /*
@@ -94,19 +93,11 @@ public class Link {
 
         nodes.forEach((destId, dest) -> {
             // If it is a client node, broadcast the message
-            if(Integer.parseInt(destId) >= 20) {
                 send(destId, gson.fromJson(gson.toJson(data), data.getClass()));
             }
-        });
+        );
     }
 
-    public boolean isSenderClient(int senderId) {
-        return senderId >= 20;
-    }
-
-    public boolean isSenderNode(int senderId) {
-        return senderId < 20 && senderId > 0;
-    }
 
     /*
      * Sends a message to a specific node with guarantee of delivery
@@ -230,11 +221,7 @@ public class Link {
             //signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
             serialized = new String(messageBuffer);
             // If the sender is a client (id >= 20), deserialize the message to a RequestMessage
-            if (isSenderClient(Integer.parseInt(new Gson().fromJson(serialized, Message.class).getSenderId()))) {
-                message = new Gson().fromJson(serialized, RequestMessage.class);
-            } else {
-                message = new Gson().fromJson(serialized, Message.class);
-            }
+            message = new Gson().fromJson(serialized, Message.class);
         }
 
         signature = message.getSignature();
@@ -257,7 +244,7 @@ public class Link {
         }
 
         // It's not an ACK -> Deserialize for the correct type (if not a client who sent)
-        if (!local && isSenderNode(Integer.parseInt(senderId))) {
+        if (!local) {
             message = new Gson().fromJson(serialized, this.messageClass);
         }
 

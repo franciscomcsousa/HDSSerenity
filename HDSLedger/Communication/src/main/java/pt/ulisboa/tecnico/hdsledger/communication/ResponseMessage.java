@@ -1,28 +1,24 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-public class ResponseMessage extends Message {
-    
-    // Consensus instance
-    private int consensusInstance;
+public class ResponseMessage {
 
     // String value
-    private String value;
+    private String message;
 
     // Position in the blockchain
     private int position;
 
-    public ResponseMessage(String senderId, Type type, String value, int position) {
-        super(senderId, type);
-        this.value = value;
+    public ResponseMessage(String value, int position) {
+        this.message = message;
         this.position = position;
     }
 
-    public String getValue() {
-        return value;
+    public String getMessage() {
+        return message;
     }
 
     public void setValue(String value) {
-        this.value = value;
+        this.message = value;
     }
 
     public int getPosition() {
@@ -31,13 +27,5 @@ public class ResponseMessage extends Message {
 
     public void setPosition(int position) {
         this.position = position;
-    }
-
-    public int getConsensusInstance() {
-        return consensusInstance;
-    }
-
-    public void setConsensusInstance(int consensusInstance) {
-        this.consensusInstance = consensusInstance;
     }
 }

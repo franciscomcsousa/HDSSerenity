@@ -1,7 +1,9 @@
 package pt.ulisboa.tecnico.hdsledger.service;
 
+import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.service.services.ClientService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -20,6 +22,7 @@ public class Node {
     private static String nodesConfigPath = "src/main/resources/";
     private final static String clientConfigPath = "../Client/src/main/resources/client_config.json";
     private static NodeService nodeService;
+    private static ClientService clientService;
 
     // Class needs to be created in order for the scheduler do use it
     // runs the roundChange
@@ -54,26 +57,21 @@ public class Node {
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
                     nodeConfig.isLeader()));
 
-            // Create client configs (only works for one client) -> eventually will be the client library
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientConfigPath);
 
-            // Combine the node and client configs into one ProcessConfig array
-            ProcessConfig[] allConfigs = new ProcessConfig[nodeConfigs.length + clientConfigs.length];
-            System.arraycopy(nodeConfigs, 0, allConfigs, 0, nodeConfigs.length);
-            System.arraycopy(clientConfigs, 0, allConfigs, nodeConfigs.length, clientConfigs.length);
-
             // Abstraction to send and receive messages
-            Link linkToAllNodes = new Link(nodeConfig, nodeConfig.getPort(), allConfigs,
-                    ConsensusMessage.class);
+            Link linkToNodes = new Link(nodeConfig,nodeConfig.getPort(),nodeConfigs,ConsensusMessage.class);
+            Link linkToClients = new Link(nodeConfig, nodeConfig.getPort() + 1000, clientConfigs, ClientMessage.class);
+
 
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
-            nodeService = new NodeService(linkToAllNodes, nodeConfig, leaderConfig,
-                    allConfigs);
+            nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs);
+            clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeConfigs, nodeService);
             
             // Start listening for requests
-
-                nodeService.listen();
+            nodeService.listen();
+            clientService.listen();
 
 
         } catch (Exception e) {
