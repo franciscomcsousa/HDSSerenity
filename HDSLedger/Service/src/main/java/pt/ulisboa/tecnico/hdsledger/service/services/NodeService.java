@@ -28,6 +28,8 @@ public class NodeService implements UDPService {
 
     // Link to communicate with nodes
     private final Link link;
+    // Link to communicate with clients
+    private final Link clientLink;
 
     // Consensus instance -> Round -> List of prepare messages
     private final MessageBucket prepareMessages;
@@ -48,7 +50,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 2000;
+    private final int timerMillis = 3000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -56,10 +58,11 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
-    public NodeService(Link link, ProcessConfig config,
+    public NodeService(Link link, Link clientLink, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
 
         this.link = link;
+        this.clientLink = clientLink;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
@@ -111,7 +114,7 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(String message) throws Exception {
+    public void startConsensus(String message) {
         System.out.println("CONSENSUS STARTED!");
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -375,14 +378,44 @@ public class NodeService implements UDPService {
             // Broadcast to all the clients for now
             // Position of the new value in the ledger
             int position = ledger.size();
-            ResponseMessage responseMessage = new ResponseMessage(config.getId(), Message.Type.RESPONSE, value, position);
-            link.broadcastToClients(responseMessage);
+
+            ClientMessage clientMessage = new ClientMessage(config.getId(),Message.Type.RESPONSE);
+            clientMessage.setMessage(value);
+            clientMessage.setPosition(position);
+
+            // Respond to the clients
+            clientLink.broadcastToClients(clientMessage);
             
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired
             timerConsensus.cancel();
             timerConsensus.purge();
         }
+    }
+
+    /*
+     * Check if a PrePrepare is justified
+     *
+     */
+    public boolean justifyPrePrepare(String nodeId, int instance, int round){
+        return consensusInstance.get() == 1 || this.justifyRoundChange(nodeId, instance, round);
+    }
+
+    /*
+    * Check if a Round Change is justified
+    *
+     */
+    public boolean justifyRoundChange(String nodeId, int instance, int round){
+        if (roundChangeMessages.nonePreparedJustification(instance, round)) {
+            return true;
+        }
+
+        Optional<RoundChangeMessage> highestRoundChangeMessage = roundChangeMessages.highestPrepared(instance, round);
+        Optional<String> prepareQuorumValue = prepareMessages.hasValidPrepareQuorum(nodeId, instance, round);
+
+        return prepareQuorumValue.isPresent() &&
+                highestRoundChangeMessage.isPresent() &&
+                prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
     }
 
     /*
@@ -417,11 +450,16 @@ public class NodeService implements UDPService {
         // Verify if it has received Quorum, ROUND_CHANGE messages
         // if it has, TODO - JustifyRoundChange
         roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
-        System.out.println("\nROUND CHANGE VALUE: " + roundChangeValue + "\n");
-        if (roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+        System.out.println("ROUND CHANGE QUORUM VALUE: " + roundChangeValue + "\n");
+
+        if (roundChangeValue.isPresent() &&
+                instance.getPreparedRound() < round &&
+                justifyRoundChange(config.getId(), consensusInstance, round)) {
+
             System.out.println("ROUND CHANGE QUORUM RECEIVED!");
 
-            // Update the leader of the consensus (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
+            // Update the leader of the consensus
+            // (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
             Arrays.stream(nodesConfig).forEach(
                     processConfig -> { if (isLeader(processConfig.getId())) processConfig.setLeader(false); }
             );
@@ -485,17 +523,10 @@ public class NodeService implements UDPService {
 
         InstanceInfo existingConsensus = this.instanceInfo.get(timerInstance);
 
-        /*if (existingConsensus == null) {
-            // TODO
-            // not sure WHY the timer goes out before the consensus is initiated ???
-            return;
-        }*/
-
-        // TODO - are both of these right?
-        int preparedRound = existingConsensus.getCurrentRound();
         // This needs to be either a string or an empty string, if this were to be null,
         // it would be mistaken for the null return of some <Optional>String return type functions
         String preparedValue = existingConsensus.getPreparedValue() != null ? existingConsensus.getPreparedValue() : "";
+        int preparedRound = existingConsensus.getPreparedValue() != null ? existingConsensus.getCurrentRound() : -1;
 
         // Increment the round in the instanceInfo of the node
         existingConsensus.incrementCurrentRound();
@@ -541,14 +572,6 @@ public class NodeService implements UDPService {
                         // Separate thread to handle each message
                         new Thread(() -> {
                             switch (message.getType()) {
-                                case APPEND ->  // placeholder
-                                {
-                                    try {
-                                        startConsensus(((RequestMessage) message).getMessage());
-                                    } catch (Exception e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
 
                                 case PRE_PREPARE -> {
                                     try {

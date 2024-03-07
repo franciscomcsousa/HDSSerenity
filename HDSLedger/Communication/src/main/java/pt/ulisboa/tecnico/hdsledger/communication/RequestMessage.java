@@ -1,15 +1,13 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-public class RequestMessage extends Message {
+import com.google.gson.Gson;
 
-    // Consensus instance
-    private int consensusInstance;
+public class RequestMessage {
 
     // String value
     private String message;
 
-    public RequestMessage(String senderId, Type type, String message) {
-        super(senderId, type);
+    public RequestMessage(String message) {
         this.message = message;
     }
 
@@ -21,11 +19,7 @@ public class RequestMessage extends Message {
         this.message = message;
     }
 
-    public int getConsensusInstance() {
-        return consensusInstance;
-    }
-
-    public void setConsensusInstance(int consensusInstance) {
-        this.consensusInstance = consensusInstance;
+    public String toJson() {
+        return new Gson().toJson(this);
     }
 }

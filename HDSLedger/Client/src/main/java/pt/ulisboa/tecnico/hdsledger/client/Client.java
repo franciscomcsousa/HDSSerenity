@@ -36,10 +36,14 @@ public class Client {
 
             // Nodes in Blockchain instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+            // TODO - later add to the config of the nodes
+            for(ProcessConfig n : nodeConfigs) {
+                n.setPort(n.getPort() + 1000);  // currently is the port + 1000; 4001,4002 etc
+            }
 
             // Create the client library and wait for replies
-            final ClientService clientService = new ClientService(clientConfig, nodeConfigs);
-            clientService.listen();
+            final ClientLibrary clientLibrary = new ClientLibrary(clientConfig, nodeConfigs);
+            clientLibrary.listen();
             
             // Read user input
             Scanner scanner = new Scanner(System.in);
@@ -65,7 +69,7 @@ public class Client {
                             System.out.println("Invalid command. Type 'append <value>' to append a value to the blockchain.");
                             break;
                         }
-                        clientService.append(splitInput[1]);
+                        clientLibrary.append(splitInput[1]);
                         break;
                     case "quit":
                         scanner.close();

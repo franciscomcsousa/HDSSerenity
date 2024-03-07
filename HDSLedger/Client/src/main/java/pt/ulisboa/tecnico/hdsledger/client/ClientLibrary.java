@@ -4,30 +4,31 @@ import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.*;
 
 //
 // Client library used as a bridge between the client and the nodes in the blockchain
 //
-public class ClientService {
+public class ClientLibrary {
     
     private final ProcessConfig clientConfig;
     private final ProcessConfig[] nodeConfigs;
     private final Link linkToNodes;
 
-    public ClientService(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
+    public ClientLibrary(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
         this.clientConfig = clientConfig;
         this.nodeConfigs = nodeConfigs;
-        this.linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, ResponseMessage.class);
+        this.linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, ClientMessage.class);
     }
 
 
     // Append a value to the blockchain
     public void append(String value) {
 
-        RequestMessage requestMessage = new RequestMessage(clientConfig.getId(), Message.Type.APPEND, value);
+        // TODO - is it too much to create a builder? for now seems overkill
+        ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.APPEND);
+        clientMessage.setMessage(value);
         //ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
-        linkToNodes.broadcast(requestMessage);
+        linkToNodes.broadcast(clientMessage);
     }
 
     // Listen for replies from the nodes
@@ -47,9 +48,9 @@ public class ClientService {
                                 System.out.print(">> ");
                                 break;
                             case RESPONSE:
-                                ResponseMessage responseMessage = (ResponseMessage) message;
+                                ClientMessage clientMessage = (ClientMessage) message;
                                 System.out.println(MessageFormat.format("{0} - Commit finished from node {1} for value \"{2}\" in position {3}", 
-                                    clientConfig.getId(), responseMessage.getSenderId(), responseMessage.getValue(), responseMessage.getPosition()));
+                                    clientConfig.getId(), clientMessage.getSenderId(), clientMessage.getMessage(), clientMessage.getPosition()));
                                 System.out.println();
                                 System.out.print(">> ");
                                 break;
