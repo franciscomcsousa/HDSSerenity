@@ -11,6 +11,19 @@ public class ProcessConfig {
 
     private int port;
 
+    private Behavior behavior = Behavior.NONE;
+
+    public enum Behavior {
+        NONE("NONE"),
+        FAULTY("FAULTY");
+
+        String behavior;
+
+        Behavior(String behavior) {
+            this.behavior = behavior;
+        }
+    }
+
     public boolean isLeader() {
         return isLeader;
     }
@@ -35,5 +48,12 @@ public class ProcessConfig {
         return hostname;
     }
 
+    public void setBehavior(Behavior newBehavior) {
+        behavior = newBehavior;
+    }
+
+    public Behavior getBehavior() {
+        return behavior;
+    }
 
 }

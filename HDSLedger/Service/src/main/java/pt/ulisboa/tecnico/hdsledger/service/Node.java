@@ -69,6 +69,12 @@ public class Node {
             // Listen to the nodes in the blockChain
             nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs);
             clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeConfigs, nodeService);
+
+            // FAULTY LEADER BYZANTINE TEST
+            if(nodeConfig.isLeader() && nodeConfig.getBehavior() == ProcessConfig.Behavior.FAULTY){
+                System.out.println("FAULTY LEADER BYZANTINE TEST");
+                return;
+            }
             
             // Start listening for requests
             nodeService.listen();

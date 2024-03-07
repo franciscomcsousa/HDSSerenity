@@ -22,6 +22,7 @@ client_configs = [
 ]
 
 # Extract config file names from the arguments if provided
+# Usage: python3 puppet-master.py <server_config> <client_config>
 if len(sys.argv) == 3:
     server_config = sys.argv[1]
     client_config = sys.argv[2]
