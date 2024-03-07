@@ -16,15 +16,16 @@ public class Client {
     private static final CustomLogger LOGGER = new CustomLogger(Client.class.getName());
     // Hardcoded path to files
     private static String clientsConfigPath = "src/main/resources/";
-    private static String nodesConfigPath = "../Service/src/main/resources/node_config.json";
+    private static String nodesConfigPath = "../Service/src/main/resources/";
 
 
     public static void main(String[] args) {
 
         try {
-            // Command line arguments, [id, hostname, port]
+            // Command line arguments
             String id = args[0];
             clientsConfigPath += args[1];
+            nodesConfigPath += args[2];
 
             // Create configuration instances
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientsConfigPath);

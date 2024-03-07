@@ -18,7 +18,7 @@ public class Node {
 
     // Hardcoded path to nodes and clients files
     private static String nodesConfigPath = "src/main/resources/";
-    private final static String clientConfigPath = "../Client/src/main/resources/client_config.json";
+    private static String clientConfigPath = "../Client/src/main/resources/";
     private static NodeService nodeService;
 
     // Class needs to be created in order for the scheduler do use it
@@ -45,6 +45,7 @@ public class Node {
             // Command line arguments
             String id = args[0];
             nodesConfigPath += args[1];
+            clientConfigPath += args[2];
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();

@@ -11,17 +11,30 @@ terminal = "kitty"
 
 # Blockchain node configuration file name
 server_configs = [
-    "node_config.json",
+    "normal_config",
+    "faulty_leader",
 ]
 
 # Client node configuration file name
 client_configs = [
-    "client_config.json",
+    "single_client",
+    "multiple_clients",
 ]
 
+# Extract config file names from the arguments if provided
+if len(sys.argv) == 3:
+    server_config = sys.argv[1]
+    client_config = sys.argv[2]
+    if server_config not in server_configs or client_config not in client_configs:
+        server_config = server_configs[0]
+        client_config = client_configs[0]
+else:
+    server_config = server_configs[0]
+    client_config = client_configs[0]
 
-server_config = server_configs[0]
-client_config = client_configs[0]
+# Add the .json extension to the config file names
+server_config += ".json"
+client_config += ".json"
 
 def quit_handler(*args):
     os.system(f"pkill -i {terminal}")
@@ -59,7 +72,7 @@ with open(f"Service/src/main/resources/{server_config}") as f:
         pid = os.fork()
         if pid == 0:
             os.system(
-                f"{terminal} --title Node:{key['id']} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config}' ; sleep 500\"")
+                f"{terminal} --title Node:{key['id']} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config} {client_config}' ; sleep 500\"")
             sys.exit()
 
 # Spawn client nodes
@@ -70,7 +83,7 @@ with open(f"Client/src/main/resources/{client_config}") as f:
         pid = os.fork()
         if pid == 0:
             os.system(
-                f"{terminal} --title Client:{key['id']} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']} {client_config}' ; sleep 500\"")
+                f"{terminal} --title Client:{key['id']} sh -c \"cd Client; mvn exec:java -Dexec.args='{key['id']} {client_config} {server_config}' ; sleep 500\"")
             sys.exit()
 
 signal.signal(signal.SIGINT, quit_handler)
