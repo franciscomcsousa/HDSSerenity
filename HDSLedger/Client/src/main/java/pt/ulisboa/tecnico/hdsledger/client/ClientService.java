@@ -48,7 +48,8 @@ public class ClientService {
                                 break;
                             case RESPONSE:
                                 ResponseMessage responseMessage = (ResponseMessage) message;
-                                System.out.println(MessageFormat.format("{0} - Commit finished from {1} for value {2}", clientConfig.getId(), responseMessage.getSenderId(), responseMessage.getValue()));
+                                System.out.println(MessageFormat.format("{0} - Commit finished from node {1} for value \"{2}\" in position {3}", 
+                                    clientConfig.getId(), responseMessage.getSenderId(), responseMessage.getValue(), responseMessage.getPosition()));
                                 System.out.println();
                                 System.out.print(">> ");
                                 break;

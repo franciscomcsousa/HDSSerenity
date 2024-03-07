@@ -8,9 +8,13 @@ public class ResponseMessage extends Message {
     // String value
     private String value;
 
-    public ResponseMessage(String senderId, Type type, String value) {
+    // Position in the blockchain
+    private int position;
+
+    public ResponseMessage(String senderId, Type type, String value, int position) {
         super(senderId, type);
         this.value = value;
+        this.position = position;
     }
 
     public String getValue() {
@@ -19,6 +23,14 @@ public class ResponseMessage extends Message {
 
     public void setValue(String value) {
         this.value = value;
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
     }
 
     public int getConsensusInstance() {

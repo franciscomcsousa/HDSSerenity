@@ -373,7 +373,9 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round, true));
 
             // Broadcast to all the clients for now
-            ResponseMessage responseMessage = new ResponseMessage(config.getId(), Message.Type.RESPONSE, value);
+            // Position of the new value in the ledger
+            int position = ledger.size();
+            ResponseMessage responseMessage = new ResponseMessage(config.getId(), Message.Type.RESPONSE, value, position);
             link.broadcastToClients(responseMessage);
             
             // Cancels the timer of the consensus when a quorum of commits
