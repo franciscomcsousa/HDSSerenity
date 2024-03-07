@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,9 +32,9 @@ public class MessageBucket {
 
     /*
      * Add a message to the bucket
-     * 
+     *
      * @param consensusInstance
-     * 
+     *
      * @param message
      */
     public void addMessage(ConsensusMessage message) {
@@ -46,6 +47,9 @@ public class MessageBucket {
     }
 
     public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
+            return Optional.empty();
+
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
@@ -118,6 +122,29 @@ public class MessageBucket {
         }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();
+    }
+
+    // Should only be applied when a quorum is guaranteed
+    public Optional<RoundChangeMessage> highestPrepared(int instance, int round){
+        RoundChangeMessage highestRoundChangeMessage = null;
+        int highestPreparedRound = -1;
+        for (ConsensusMessage message : bucket.get(instance).get(round).values()) {
+            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
+            if (roundChangeMessage.getPreparedRound() > highestPreparedRound)
+                highestRoundChangeMessage = roundChangeMessage;
+        }
+        return Optional.ofNullable(highestRoundChangeMessage);
+    }
+
+    /*
+     * Checks if all of the messages in Qrc have no prepared round and value
+     * J1 of Round Change justification
+     */
+    public boolean nonePreparedJustification(int instance, int round) {
+        return bucket.get(instance).get(round).values().stream().noneMatch(message -> {
+            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
+            return (roundChangeMessage != null && !Objects.equals(roundChangeMessage.getPreparedValue(), ""));
+        });
     }
 
     public Map<String, ConsensusMessage> getMessages(int instance, int round) {
