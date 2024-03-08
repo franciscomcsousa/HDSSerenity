@@ -29,6 +29,7 @@ Can be found inside the `resources/` folder of the `Service` module.
     "isLeader": <IS_LEADER>,
     "hostname": "localhost",
     "port": <NODE_PORT>,
+    "behavior": <BEHAVIOR>,
 }
 ```
 
@@ -61,17 +62,33 @@ of the blockchain.
 The script runs with `kitty` terminal emulator by default since it's installed on the RNL labs.
 
 To run the script you need to have `python3` installed.
-The script has arguments which can be modified:
+The script has arguments, which can be modified:
 
 - `terminal` - the terminal emulator used by the script
-- `server_config` - a string from the array `server_configs` which contains the possible configurations for the blockchain nodes
+- `server_config` - a string from the array `server_configs`, which contains the possible configurations for the blockchain nodes
+- `client_config` - a string from the array `client_configs`, which contains the possible configurations for the blockchain clients
 
-Run the script with the following command:
+Run the default script with the following command:
 
 ```bash
 python3 puppet-master.py
 ```
 Note: You may need to install **kitty** in your computer
+
+## Testing
+
+To perform specific tests on the system, two arguments can be added to the default command:
+
+```bash
+python3 puppet-master.py <servers_config> <clients_config>
+```
+
+- `servers_config` - the configuration file used by the server nodes
+- `clients_config` - the configuration file used by the client nodes
+
+**Note: It is not necessary to provide the file extension (.json), only the file name is needed**
+
+If no arguments are used or invalid ones are entered, the script will default to the normal configuration.
 
 ## Maven
 
