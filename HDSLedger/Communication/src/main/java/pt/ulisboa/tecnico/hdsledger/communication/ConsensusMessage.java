@@ -74,4 +74,10 @@ public class ConsensusMessage extends Message {
     public void setReplyToMessageId(int replyToMessageId) {
         this.replyToMessageId = replyToMessageId;
     }
+    @Override
+    public String getSignable(){
+        return super.getSenderId() + Integer.toString(super.getMessageId()) + super.getType().toString()
+                + getConsensusInstance() + getRound() + getReplyTo() +getReplyToMessageId() + getMessage();
+    }
 }
+
