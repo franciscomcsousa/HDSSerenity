@@ -8,9 +8,9 @@ public class ClientMessage extends Message {
     private String replyTo;
     // Id of the previous message
     private int replyToMessageId;
-    // Message (APPEND, RESPONSE) ?
+    // Message (APPEND, RESPONSE)
     private String message;
-    // position in ledger - TODO, should it be here?
+    // Position of the message in the ledger
     private int position;
 
     public ClientMessage(String senderId, Type type) {
@@ -55,5 +55,12 @@ public class ClientMessage extends Message {
 
     public void setPosition(int position) {
         this.position = position;
+    }
+
+    // TODO - for now not signing position
+    @Override
+    public String getSignable(){
+        return super.getSenderId() + super.getMessageId() + super.getType().toString()
+                + getReplyTo() + getReplyToMessageId() + getMessage();
     }
 }
