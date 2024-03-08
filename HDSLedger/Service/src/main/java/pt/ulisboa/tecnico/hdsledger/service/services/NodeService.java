@@ -70,15 +70,9 @@ public class NodeService implements UDPService {
         this.nodesConfig = nodesConfig;
 
         //Only count nodes that are not clients
-        this.prepareMessages = new MessageBucket(Arrays.stream(nodesConfig)
-            .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
-            .toArray(ProcessConfig[]::new).length);
-        this.commitMessages = new MessageBucket(Arrays.stream(nodesConfig)
-            .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
-            .toArray(ProcessConfig[]::new).length);
-        this.roundChangeMessages = new MessageBucket(Arrays.stream(nodesConfig)
-            .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
-            .toArray(ProcessConfig[]::new).length);
+        this.prepareMessages = new MessageBucket(nodesConfig.length);
+        this.commitMessages = new MessageBucket(nodesConfig.length);
+        this.roundChangeMessages = new MessageBucket(nodesConfig.length);
     }
 
     public ProcessConfig getConfig() {
@@ -447,7 +441,7 @@ public class NodeService implements UDPService {
      *
      */
     public boolean justifyPrePrepare(String nodeId, int instance, int round){
-        return consensusInstance.get() == 1 || this.justifyRoundChange(nodeId, instance, round);
+        return round == 1 || this.justifyRoundChange(nodeId, instance, round);
     }
 
     /*
@@ -501,10 +495,10 @@ public class NodeService implements UDPService {
         Optional<String> roundChangeValue;
 
         // Verify if it has received Quorum, ROUND_CHANGE messages
-        // if it has, TODO - JustifyRoundChange
+        // if it has, JustifyRoundChange
         roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
-        System.out.println("ROUND CHANGE QUORUM VALUE: " + roundChangeValue + "\n");
+        //System.out.println("ROUND CHANGE QUORUM VALUE: " + roundChangeValue + "\n");
 
         if (roundChangeValue.isPresent() &&
                 instance.getPreparedRound() < round &&
@@ -539,7 +533,7 @@ public class NodeService implements UDPService {
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
             // otherwise the value is the one passed as input to this instance
-            if (config.isLeader()) {
+            if (config.isLeader() && justifyPrePrepare(config.getId(),consensusInstance,round)) {
                 String value = instance.getPreparedValue();
                 if (value == null) {
                     value = instance.getInputValue();

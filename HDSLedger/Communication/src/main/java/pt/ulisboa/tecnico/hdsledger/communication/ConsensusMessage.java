@@ -76,7 +76,7 @@ public class ConsensusMessage extends Message {
     }
     @Override
     public String getSignable(){
-        return super.getSenderId() + Integer.toString(super.getMessageId()) + super.getType().toString()
+        return super.getSenderId() + super.getMessageId() + super.getType().toString()
                 + getConsensusInstance() + getRound() + getReplyTo() +getReplyToMessageId() + getMessage();
     }
 }
