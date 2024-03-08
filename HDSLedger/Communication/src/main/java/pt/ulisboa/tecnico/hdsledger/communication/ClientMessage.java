@@ -10,6 +10,8 @@ public class ClientMessage extends Message {
     private int replyToMessageId;
     // Message (APPEND, RESPONSE)
     private String message;
+    // Position of the message in the ledger
+    private int position;
 
     public ClientMessage(String senderId, Type type) {
         super(senderId, type);
@@ -53,5 +55,12 @@ public class ClientMessage extends Message {
 
     public void setPosition(int position) {
         this.position = position;
+    }
+
+    // TODO - for now not signing position
+    @Override
+    public String getSignable(){
+        return super.getSenderId() + Integer.toString(super.getMessageId()) + super.getType().toString()
+                + getReplyTo() + getReplyToMessageId() + getMessage();
     }
 }

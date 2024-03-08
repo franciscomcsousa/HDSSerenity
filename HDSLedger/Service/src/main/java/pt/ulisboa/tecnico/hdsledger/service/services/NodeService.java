@@ -52,7 +52,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 5000;
+    private final int timerMillis = 3000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -109,6 +109,19 @@ public class NodeService implements UDPService {
         return consensusMessage;
     }
 
+    public ConsensusMessage createConsensusMessageWithReplyTo(String value, int instance, int round, String replyTo) {
+        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
+
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
+                .setConsensusInstance(instance)
+                .setRound(round)
+                .setMessage(prePrepareMessage.toJson())
+                .setReplyTo(replyTo)
+                .build();
+
+        return consensusMessage;
+    }
+
     public void addClientMessage(String id, String message) {
         this.clientMessages.put(id, message);
     }
@@ -120,11 +133,11 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(String message) {
+    public void startConsensus(ClientMessage message) {
         System.out.println("CONSENSUS STARTED!");
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(message));
+        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(message.getMessage()));
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
@@ -145,7 +158,7 @@ public class NodeService implements UDPService {
 
         // DIFF VALUE BYZANTINE TEST
         if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
-            message = "DIFFERENT VALUE";
+            message.setMessage("DIFFERENT VALUE");
         }
 
         // Leader broadcasts PRE-PREPARE message
@@ -154,7 +167,8 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
 
-            ConsensusMessage m = this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound());
+            ConsensusMessage m = this.createConsensusMessageWithReplyTo(message.getMessage(), localConsensusInstance, 
+                instance.getCurrentRound(), message.getSenderId());
             this.link.broadcast(m);
 
         } else {
@@ -198,19 +212,21 @@ public class NodeService implements UDPService {
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId))
             return;
-
+        
+        /* COMMENTED FOR STABILITY PURPOSES
         // Verify if pre-prepare has right value from client
         // If no entry in the map belonging to that client has that value, then it is not valid
         String clientId = message.getReplyTo();
-        ConcurrentHashMap<String, String> sameClientMessages = new ConcurrentHashMap<>();
-        this.clientMessages.forEach((k, v) -> {
-            if (k.equals(clientId)) {
-                sameClientMessages.put(k, v);
+        for (String id : clientMessages.keySet()) {
+            if (id.equals(clientId) && !clientMessages.get(id).equals(value)){
+                this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(clientMessages.get(id)));
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format(
+                                "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with wrong value",
+                                config.getId(), senderId, consensusInstance, round));
+                return;
             }
-        });
-        if (!sameClientMessages.containsValue(value)) {
-            return;
-        }
+        }*/
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));

@@ -57,7 +57,7 @@ public class ClientService implements UDPService {
                                 case APPEND ->
                                 {
                                     nodeService.addClientMessage(message.getSenderId(), ((ClientMessage) message).getMessage());
-                                    nodeService.startConsensus(((ClientMessage) message).getMessage());
+                                    nodeService.startConsensus((ClientMessage) message);
                                 }
 
                                 case ACK ->
