@@ -173,7 +173,7 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public void uponPrePrepare(ConsensusMessage message) throws Exception {
+    public void uponPrePrepare(ConsensusMessage message) {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -424,11 +424,15 @@ public class NodeService implements UDPService {
             return true;
         }
 
+        Optional<String> prepareQuorumValue = Optional.empty();
         Optional<RoundChangeMessage> highestRoundChangeMessage = roundChangeMessages.highestPrepared(instance, round);
-        Optional<String> prepareQuorumValue = prepareMessages.hasValidPrepareQuorum(nodeId, instance, round);
+        if (highestRoundChangeMessage.isPresent())
+            prepareQuorumValue = prepareMessages.hasValidPrepareQuorum(
+                    nodeId,
+                    instance,
+                    highestRoundChangeMessage.get().getPreparedRound());
 
         return prepareQuorumValue.isPresent() &&
-                highestRoundChangeMessage.isPresent() &&
                 prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
     }
 
@@ -464,6 +468,7 @@ public class NodeService implements UDPService {
         // Verify if it has received Quorum, ROUND_CHANGE messages
         // if it has, TODO - JustifyRoundChange
         roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+
         System.out.println("ROUND CHANGE QUORUM VALUE: " + roundChangeValue + "\n");
 
         if (roundChangeValue.isPresent() &&
