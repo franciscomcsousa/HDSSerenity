@@ -31,6 +31,8 @@ public class NodeService implements UDPService {
     // Link to communicate with clients
     private final Link clientLink;
 
+    // Map of client ids to their messages
+    private final Map<String, String> clientMessages = new ConcurrentHashMap<>();
     // Consensus instance -> Round -> List of prepare messages
     private final MessageBucket prepareMessages;
     // Consensus instance -> Round -> List of commit messages
@@ -72,11 +74,11 @@ public class NodeService implements UDPService {
             .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
             .toArray(ProcessConfig[]::new).length);
         this.commitMessages = new MessageBucket(Arrays.stream(nodesConfig)
-        .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
-        .toArray(ProcessConfig[]::new).length);
+            .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
+            .toArray(ProcessConfig[]::new).length);
         this.roundChangeMessages = new MessageBucket(Arrays.stream(nodesConfig)
-        .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
-        .toArray(ProcessConfig[]::new).length);
+            .filter(c -> Integer.parseInt(c.getId()) < 20 && Integer.parseInt(c.getId()) > 0)
+            .toArray(ProcessConfig[]::new).length);
     }
 
     public ProcessConfig getConfig() {
@@ -105,6 +107,10 @@ public class NodeService implements UDPService {
                 .build();
 
         return consensusMessage;
+    }
+
+    public void addClientMessage(String id, String message) {
+        this.clientMessages.put(id, message);
     }
 
     /*
@@ -192,6 +198,19 @@ public class NodeService implements UDPService {
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId))
             return;
+
+        // Verify if pre-prepare has right value from client
+        // If no entry in the map belonging to that client has that value, then it is not valid
+        String clientId = message.getReplyTo();
+        ConcurrentHashMap<String, String> sameClientMessages = new ConcurrentHashMap<>();
+        this.clientMessages.forEach((k, v) -> {
+            if (k.equals(clientId)) {
+                sameClientMessages.put(k, v);
+            }
+        });
+        if (!sameClientMessages.containsValue(value)) {
+            return;
+        }
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));

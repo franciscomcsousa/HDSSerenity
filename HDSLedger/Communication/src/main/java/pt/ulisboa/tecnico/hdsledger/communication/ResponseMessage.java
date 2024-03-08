@@ -9,7 +9,7 @@ public class ResponseMessage {
     private int position;
 
     public ResponseMessage(String value, int position) {
-        this.message = message;
+        this.message = value;
         this.position = position;
     }
 

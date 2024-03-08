@@ -8,10 +8,8 @@ public class ClientMessage extends Message {
     private String replyTo;
     // Id of the previous message
     private int replyToMessageId;
-    // Message (APPEND, RESPONSE) ?
+    // Message (APPEND, RESPONSE)
     private String message;
-    // position in ledger - TODO, should it be here?
-    private int position;
 
     public ClientMessage(String senderId, Type type) {
         super(senderId, type);

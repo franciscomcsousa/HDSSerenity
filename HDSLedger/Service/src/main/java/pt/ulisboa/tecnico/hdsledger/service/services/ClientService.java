@@ -41,16 +41,6 @@ public class ClientService implements UDPService {
         return this.config;
     }
 
-//    private boolean isLeader(String id) {
-//        return this.leaderConfig.getId().equals(id);
-//    }
-
-    // TODO - future implementations
-    public String append(ClientMessage message) {
-        // maybe some more verifications ?
-        return message.getMessage();
-    }
-
     @Override
     public void listen() {
         try {
@@ -66,6 +56,7 @@ public class ClientService implements UDPService {
                             switch (message.getType()) {
                                 case APPEND ->
                                 {
+                                    nodeService.addClientMessage(message.getSenderId(), ((ClientMessage) message).getMessage());
                                     nodeService.startConsensus(((ClientMessage) message).getMessage());
                                 }
 
