@@ -60,7 +60,7 @@ public class ClientMessage extends Message {
     // TODO - for now not signing position
     @Override
     public String getSignable(){
-        return super.getSenderId() + Integer.toString(super.getMessageId()) + super.getType().toString()
+        return super.getSenderId() + super.getMessageId() + super.getType().toString()
                 + getReplyTo() + getReplyToMessageId() + getMessage();
     }
 }
