@@ -255,16 +255,16 @@ public class Link {
             message.setType(Type.IGNORE);
         }
 
-        // TODO ? - Local messages don't have a need to verify the signature (they don't even send one)
+        // Local messages don't have a need to verify the signature (they don't even send one)
         if (!local) {
-            boolean isOK = RSASignature.verifySign(message.getSignable(), signature, message.getSenderId());
-
-            //System.out.println("\n\nSIGNATURE VERIFIED ?: " + isOK);
+            // If signature doesn't match, message is set to INVALID
+            if (!RSASignature.verifySign(message.getSignable(), signature, message.getSenderId())) {
+                message.setType(Type.INVALID);
+            }
         }
-
-
+        
         switch (message.getType()) {
-            case PRE_PREPARE -> {
+            case PRE_PREPARE, INVALID -> {
                 return message;
             }
             case IGNORE -> {

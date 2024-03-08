@@ -54,7 +54,7 @@ public class ClientLibrary {
                                 System.out.println();
                                 System.out.print(">> ");
                                 break;
-                            case IGNORE:
+                            case IGNORE, INVALID:
                                 break;
                             default:
                                 System.out.println("Unknown message type received");

@@ -69,6 +69,11 @@ public class ClientService implements UDPService {
                                                 MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                         config.getId(), message.getSenderId()));
 
+                                case INVALID ->
+                                        LOGGER.log(Level.INFO,
+                                                MessageFormat.format("{0} - Received INVALID message from {1}",
+                                                        config.getId(), message.getSenderId()));
+
                                 default ->
                                         LOGGER.log(Level.INFO,
                                                 MessageFormat.format("{0} - Received unknown message from {1}",

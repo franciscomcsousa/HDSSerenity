@@ -16,7 +16,7 @@ public class Message implements Serializable {
 
     public enum Type {
         // CONSENSUS
-        PRE_PREPARE, PREPARE, COMMIT, ROUND_CHANGE, ACK, IGNORE,
+        PRE_PREPARE, PREPARE, COMMIT, ROUND_CHANGE, ACK, IGNORE, INVALID,
         // CLIENT
         APPEND, RESPONSE;
     }
