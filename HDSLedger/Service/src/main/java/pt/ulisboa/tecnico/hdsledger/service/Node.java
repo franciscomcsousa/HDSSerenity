@@ -60,6 +60,12 @@ public class Node {
 
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientConfigPath);
 
+            // MULTIPLE LEADERS BYZANTINE TEST
+            if(nodeConfig.getBehavior() == ProcessConfig.Behavior.MULT_LEADERS){
+                Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).forEach(c -> c.setLeader(false));
+                nodeConfig.setLeader(true);
+            }
+
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig,nodeConfig.getPort(),nodeConfigs,ConsensusMessage.class);
             Link linkToClients = new Link(nodeConfig, nodeConfig.getPort() + 1000, clientConfigs, ClientMessage.class);

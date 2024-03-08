@@ -13,6 +13,10 @@ terminal = "kitty"
 server_configs = [
     "normal_config",
     "faulty_leader",
+    "different_value",
+    "multiple_leaders",
+    "prepare_value",
+    "commit_value",
 ]
 
 # Client node configuration file name

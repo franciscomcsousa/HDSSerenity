@@ -15,7 +15,11 @@ public class ProcessConfig {
 
     public enum Behavior {
         NONE("NONE"),
-        FAULTY("FAULTY");
+        FAULTY("FAULTY"),
+        DIFF_VALUE("DIFF_VALUE"),
+        MULT_LEADERS("MULT_LEADERS"),
+        PREPARE_VALUE("PREPARE_VALUE"),
+        COMMIT_VALUE("COMMIT_VALUE");
 
         String behavior;
 

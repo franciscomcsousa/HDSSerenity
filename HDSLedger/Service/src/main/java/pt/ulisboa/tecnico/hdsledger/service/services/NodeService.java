@@ -50,7 +50,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 3000;
+    private final int timerMillis = 5000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -137,6 +137,11 @@ public class NodeService implements UDPService {
             }
         }
 
+        // DIFF VALUE BYZANTINE TEST
+        if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
+            message = "DIFFERENT VALUE";
+        }
+
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
@@ -203,6 +208,11 @@ public class NodeService implements UDPService {
         }
 
         PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
+
+        // DIFFERENT PREPARE VALUE BYZANTINE TEST
+        if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
+            prepareMessage = new PrepareMessage("DIFFERENT VALUE");
+        }
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
@@ -287,6 +297,12 @@ public class NodeService implements UDPService {
                     .values();
 
             CommitMessage c = new CommitMessage(preparedValue.get());
+
+            // DIFFERENT COMMIT VALUE BYZANTINE TEST
+            if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
+                c = new CommitMessage("DIFFERENT VALUE");
+            }
+
             instance.setCommitMessage(c);
 
             for (ConsensusMessage senderMessage : sendersMessage) {
@@ -376,9 +392,7 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round, true));
 
             // Broadcast to all the clients for now
-            // Position of the new value in the ledger
             int position = ledger.size();
-
             ClientMessage clientMessage = new ClientMessage(config.getId(),Message.Type.RESPONSE);
             clientMessage.setMessage(value);
             clientMessage.setPosition(position);
