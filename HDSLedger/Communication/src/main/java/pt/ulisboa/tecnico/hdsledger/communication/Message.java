@@ -58,7 +58,6 @@ public class Message implements Serializable {
         this.signature = signature;
     }
 
-    // TODO - prone to changes
     // Probably a good idea to have messages that extend from this to override this method
     public String getSignable(){
         return senderId + Integer.toString(messageId) + type.toString();

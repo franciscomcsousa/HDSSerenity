@@ -74,6 +74,7 @@ public class ConsensusMessage extends Message {
     public void setReplyToMessageId(int replyToMessageId) {
         this.replyToMessageId = replyToMessageId;
     }
+    // TODO - add a nounce?
     @Override
     public String getSignable(){
         return super.getSenderId() + super.getMessageId() + super.getType().toString()

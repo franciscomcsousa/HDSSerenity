@@ -262,7 +262,7 @@ public class Link {
                 message.setType(Type.INVALID);
             }
         }
-        
+
         switch (message.getType()) {
             case PRE_PREPARE, INVALID -> {
                 return message;

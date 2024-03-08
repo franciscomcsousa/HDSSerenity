@@ -110,8 +110,6 @@ public class MessageBucket {
         bucket.get(instance).get(round).values().forEach((message) -> {
             RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
             String value = roundChangeMessage.getPreparedValue();
-            //System.out.println("\nPrepared value: " + value);
-            //System.out.println(roundChangeMessage.toJson());
             frequency.put(value, frequency.getOrDefault(value, 0) + 1);
         });
 

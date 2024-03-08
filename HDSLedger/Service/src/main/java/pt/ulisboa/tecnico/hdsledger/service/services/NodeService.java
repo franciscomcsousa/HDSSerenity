@@ -128,7 +128,6 @@ public class NodeService implements UDPService {
      * @param inputValue Value to value agreed upon
      */
     public void startConsensus(ClientMessage message) {
-        System.out.println("CONSENSUS STARTED!");
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(message.getMessage()));
@@ -467,7 +466,7 @@ public class NodeService implements UDPService {
 
     /*
      * Handle roundChange messages and decide if there is a valid quorum
-     * @param message Message to be handled
+     * @param message ConsensusMessage to be handled
      */
     public synchronized void uponRoundChange(ConsensusMessage message) {
 
@@ -489,7 +488,7 @@ public class NodeService implements UDPService {
 
         roundChangeMessages.addMessage(message);
 
-        // TODO (again) - Verify if it has received f + 1, ROUND_CHANGE messages
+        // TODO - Verify if it has received f + 1, ROUND_CHANGE messages - not essential but increases liveness
         // if it has, broadcasts the message to all,
         // updates the round value
         Optional<String> roundChangeValue;
@@ -498,13 +497,13 @@ public class NodeService implements UDPService {
         // if it has, JustifyRoundChange
         roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
-        //System.out.println("ROUND CHANGE QUORUM VALUE: " + roundChangeValue + "\n");
+        // TODO - verify if upon rule is only triggered once per round
 
         if (roundChangeValue.isPresent() &&
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round)) {
 
-            System.out.println("ROUND CHANGE QUORUM RECEIVED!");
+            System.out.println("ROUND CHANGE QUORUM RECEIVED");
 
             // Update the leader of the consensus
             // (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
