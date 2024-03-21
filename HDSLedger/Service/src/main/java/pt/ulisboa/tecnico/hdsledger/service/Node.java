@@ -68,7 +68,7 @@ public class Node {
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig,nodeConfig.getPort(),nodeConfigs,ConsensusMessage.class);
-            Link linkToClients = new Link(nodeConfig, nodeConfig.getPort() + 1000, clientConfigs, ClientMessage.class);
+            Link linkToClients = new Link(nodeConfig, nodeConfig.getClientPort(), clientConfigs, ClientMessage.class);
 
 
             // Services that implement listen from UDPService

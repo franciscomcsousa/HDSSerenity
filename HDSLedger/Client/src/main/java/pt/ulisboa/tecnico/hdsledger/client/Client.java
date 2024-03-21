@@ -36,9 +36,8 @@ public class Client {
 
             // Nodes in Blockchain instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
-            // TODO - later add to the config of the nodes
             for(ProcessConfig n : nodeConfigs) {
-                n.setPort(n.getPort() + 1000);  // currently is the port + 1000; 4001,4002 etc
+                n.setPort(n.getClientPort());
             }
 
             // Create the client library and wait for replies

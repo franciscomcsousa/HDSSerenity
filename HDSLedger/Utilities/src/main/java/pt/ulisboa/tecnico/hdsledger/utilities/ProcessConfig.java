@@ -11,6 +11,8 @@ public class ProcessConfig {
 
     private int port;
 
+    private int clientPort;
+
     private Behavior behavior = Behavior.NONE;
 
     public enum Behavior {
@@ -42,6 +44,14 @@ public class ProcessConfig {
 
     public void setPort(int newPort) {
         port = newPort;
+    }
+
+    public int getClientPort() {
+        return clientPort;
+    }
+
+    public void setClientPort(int newClientPort) {
+        clientPort = newClientPort;
     }
 
     public String getId() {
