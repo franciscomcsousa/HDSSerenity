@@ -13,22 +13,50 @@ public class ClientLibrary {
     private final ProcessConfig clientConfig;
     private final ProcessConfig[] nodeConfigs;
     private final Link linkToNodes;
+    private final int quorumSize;
+    private final int smallQuorumSize;
+    private int receivedResponses = 0;
 
     public ClientLibrary(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
         this.clientConfig = clientConfig;
         this.nodeConfigs = nodeConfigs;
         this.linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, ClientMessage.class);
+
+        int f = Math.floorDiv(nodeConfigs.length - 1, 3);
+        quorumSize = Math.floorDiv(nodeConfigs.length + f, 2) + 1;
+        smallQuorumSize = f + 1;
     }
 
 
     // Append a value to the blockchain
     public void append(String value) {
 
-        // TODO - is it too much to create a builder? for now seems overkill
+        // Reset the number of received responses
+        receivedResponses = 0;
+
+        // Create a message and broadcast it to the nodes
         ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.APPEND);
         clientMessage.setMessage(value);
-        //ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
         linkToNodes.broadcast(clientMessage);
+
+        // Client waits for a smallQuorum (f + 1) of RESPONSE messages using the message bucket
+        System.out.println(MessageFormat.format("{0} - Waiting for a quorum of responses for value \"{1}\"", clientConfig.getId(), value));
+        while (true) {
+            // Sleep for a while to avoid busy waiting
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            if (receivedResponses >= smallQuorumSize) {
+                System.out.println(MessageFormat.format("{0} - Received a quorum of responses for value \"{1}\"", clientConfig.getId(), value));
+                System.out.println();
+                System.out.print(">> ");
+                receivedResponses = 0;
+                break;
+            }
+        }
     }
 
     // Listen for replies from the nodes
@@ -49,6 +77,9 @@ public class ClientLibrary {
                                 break;
                             case RESPONSE:
                                 ClientMessage clientMessage = (ClientMessage) message;
+                                if (receivedResponses < smallQuorumSize) {
+                                    receivedResponses++;
+                                }
                                 System.out.println(MessageFormat.format("{0} - Commit finished from node {1} for value \"{2}\" in position {3}", 
                                     clientConfig.getId(), clientMessage.getSenderId(), clientMessage.getMessage(), clientMessage.getPosition()));
                                 System.out.println();
