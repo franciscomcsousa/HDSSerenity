@@ -31,8 +31,6 @@ public class NodeService implements UDPService {
     // Link to communicate with clients
     private final Link clientLink;
 
-    // Map of client ids to their messages
-    private final Map<String, String> clientMessages = new ConcurrentHashMap<>();
     // Consensus instance -> Round -> List of prepare messages
     private final MessageBucket prepareMessages;
     // Consensus instance -> Round -> List of commit messages
@@ -52,7 +50,7 @@ public class NodeService implements UDPService {
     private Timer timerConsensus;
 
     // Consensus should take max timerMilliseconds
-    private final int timerMillis = 3000;
+    private final int timerMillis = 5000;
     
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
@@ -114,10 +112,6 @@ public class NodeService implements UDPService {
                 .build();
 
         return consensusMessage;
-    }
-
-    public void addClientMessage(String id, String message) {
-        this.clientMessages.put(id, message);
     }
 
     /*
@@ -205,21 +199,6 @@ public class NodeService implements UDPService {
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId))
             return;
-        
-        /* COMMENTED FOR STABILITY PURPOSES
-        // Verify if pre-prepare has right value from client
-        // If no entry in the map belonging to that client has that value, then it is not valid
-        String clientId = message.getReplyTo();
-        for (String id : clientMessages.keySet()) {
-            if (id.equals(clientId) && !clientMessages.get(id).equals(value)){
-                this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(clientMessages.get(id)));
-                LOGGER.log(Level.INFO,
-                        MessageFormat.format(
-                                "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with wrong value",
-                                config.getId(), senderId, consensusInstance, round));
-                return;
-            }
-        }*/
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
@@ -421,7 +400,7 @@ public class NodeService implements UDPService {
 
             // Broadcast to all the clients for now
             int position = ledger.size();
-            ClientMessage clientMessage = new ClientMessage(config.getId(),Message.Type.RESPONSE);
+            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.RESPONSE);
             clientMessage.setMessage(value);
             clientMessage.setPosition(position);
 
