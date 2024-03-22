@@ -101,7 +101,8 @@ public class NodeService implements UDPService {
         return consensusMessage;
     }
 
-    public ConsensusMessage createConsensusMessageWithReplyTo(String value, int instance, int round, String replyTo) {
+    // Overload
+    public ConsensusMessage createConsensusMessage(String value, int instance, int round, String replyTo) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
@@ -154,7 +155,7 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
 
-            ConsensusMessage m = this.createConsensusMessageWithReplyTo(message.getMessage(), localConsensusInstance, 
+            ConsensusMessage m = this.createConsensusMessage(message.getMessage(), localConsensusInstance,
                 instance.getCurrentRound(), message.getSenderId());
             this.link.broadcast(m);
 

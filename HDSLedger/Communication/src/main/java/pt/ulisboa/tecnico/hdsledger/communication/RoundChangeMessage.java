@@ -6,9 +6,9 @@ public class RoundChangeMessage {
 
     // Prepared round
     private int preparedRound;
-
     // Prepared value
     private String preparedValue;
+
 
     public RoundChangeMessage(int preparedRound, String preparedValue){
         this.preparedRound = preparedRound;
