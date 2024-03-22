@@ -59,9 +59,9 @@ public class RSASignature {
         return keyFacPub.generatePublic(pubSpec);
     }
 
-    public static byte[] sign(String message, String stringId) throws Exception {
+    public static byte[] sign(String signable, String stringId) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hashedData = digest.digest(message.getBytes(StandardCharsets.UTF_8));
+        byte[] hashedData = digest.digest(signable.getBytes(StandardCharsets.UTF_8));
 
         PrivateKey privateKey = getPrivateKey(stringId);
 
@@ -72,9 +72,9 @@ public class RSASignature {
         return privateSignature.sign();
     }
 
-    public static boolean verifySign(String message, byte[] signature, String stringId) throws Exception {
+    public static boolean verifySign(String signable, byte[] signature, String stringId) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hashedData = digest.digest(message.getBytes(StandardCharsets.UTF_8));
+        byte[] hashedData = digest.digest(signable.getBytes(StandardCharsets.UTF_8));
 
         PublicKey publicKey = getPublicKey(stringId);
 
