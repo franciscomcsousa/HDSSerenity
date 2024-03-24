@@ -6,7 +6,7 @@ import java.util.List;
 public class Block {
 
     private List<Transaction> transactions = new ArrayList<>();
-    private int blockSize = 3;
+    private int blockSize = 2;
     private byte[] signature;
 
     public Block() {

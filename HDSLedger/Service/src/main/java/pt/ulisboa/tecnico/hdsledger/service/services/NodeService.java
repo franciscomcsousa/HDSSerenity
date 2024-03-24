@@ -12,6 +12,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilde
 import pt.ulisboa.tecnico.hdsledger.service.Node;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
+import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -49,6 +50,9 @@ public class NodeService implements UDPService {
     // Timer to trigger round changes
     private Timer timerConsensus;
 
+    // Requests queue
+    private final Requests requests;
+
     // Consensus should take max timerMilliseconds
     private final int timerMillis = 5000;
     
@@ -64,13 +68,14 @@ public class NodeService implements UDPService {
     private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
 
     public NodeService(Link link, Link clientLink, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs, Requests requests) {
 
         this.link = link;
         this.clientLink = clientLink;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
+        this.requests = requests;
 
         //Only count nodes that are not clients
         this.prepareMessages = new MessageBucket(nodesConfig.length);

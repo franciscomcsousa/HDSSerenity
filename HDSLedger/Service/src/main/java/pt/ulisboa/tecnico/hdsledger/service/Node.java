@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.hdsledger.service;
 import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
 import pt.ulisboa.tecnico.hdsledger.service.services.ClientService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
@@ -49,6 +50,7 @@ public class Node {
             String id = args[0];
             nodesConfigPath += args[1];
             clientConfigPath += args[2];
+            
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
@@ -67,14 +69,16 @@ public class Node {
             }
 
             // Abstraction to send and receive messages
-            Link linkToNodes = new Link(nodeConfig,nodeConfig.getPort(),nodeConfigs,ConsensusMessage.class);
+            Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs, ConsensusMessage.class);
             Link linkToClients = new Link(nodeConfig, nodeConfig.getClientPort(), clientConfigs, ClientMessage.class);
 
+            // Create the requests queue
+            Requests requests = new Requests();
 
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
-            nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs, clientConfigs);
-            clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeConfigs, nodeService);
+            nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs, clientConfigs, requests);
+            clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeConfigs, nodeService, requests);
 
             // FAULTY LEADER BYZANTINE TEST
             if(nodeConfig.isLeader() && nodeConfig.getBehavior() == ProcessConfig.Behavior.FAULTY){

@@ -5,7 +5,7 @@ import java.text.MessageFormat;
 import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
-import pt.ulisboa.tecnico.hdsledger.service.Node;
+import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -24,17 +24,22 @@ public class ClientService implements UDPService {
 
     // Leader configuration
     private ProcessConfig[] clientConfigs;
+
     // Node Service
     private NodeService nodeService;
 
+    // Requests queue
+    private final Requests requests;
+
     public ClientService(Link link, ProcessConfig config,
-                       ProcessConfig[] nodesConfigs, ProcessConfig[] clientConfigs, NodeService nodeService) {
+                       ProcessConfig[] nodesConfigs, ProcessConfig[] clientConfigs, NodeService nodeService, Requests requests) {
 
         this.link = link;
         this.config = config;
         this.clientConfigs = clientConfigs;
         this.nodesConfigs = nodesConfigs;
         this.nodeService = nodeService;
+        this.requests = requests;
     }
 
     public ProcessConfig getConfig() {
@@ -42,9 +47,15 @@ public class ClientService implements UDPService {
     }
 
     private void receivedTransfer(ClientMessage message) {
-        // TODO - perhaps do some verifications here before starting a consensus
-
-        nodeService.startConsensus(message);
+        // TODO - Uncomment everything after changing consensus to start with a block
+        // Add the request to the queue
+        //requests.addRequest(message);
+        // If there are enough requests, create a block and start consensus
+        //if (requests.isEnoughRequests()) {
+            nodeService.startConsensus(message);
+            // TODO - Remove line below after changing consensus to start with a block (commented for now)
+            //nodeService.startConsensus(requests.createBlock());
+        //}
     }
 
 
@@ -63,28 +74,29 @@ public class ClientService implements UDPService {
                             switch (message.getType()) {
                                 case TRANSFER ->
                                 {
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received TRANSFER message from {1}",
+                                            config.getId(), message.getSenderId()));
                                     receivedTransfer((ClientMessage) message);
-                                    //nodeService.startConsensus((ClientMessage) message);
                                 }
 
                                 case ACK ->
-                                        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
-                                                config.getId(), message.getSenderId()));
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
+                                            config.getId(), message.getSenderId()));
 
                                 case IGNORE ->
-                                        LOGGER.log(Level.INFO,
-                                                MessageFormat.format("{0} - Received IGNORE message from {1}",
-                                                        config.getId(), message.getSenderId()));
+                                    LOGGER.log(Level.INFO,
+                                            MessageFormat.format("{0} - Received IGNORE message from {1}",
+                                                    config.getId(), message.getSenderId()));
 
                                 case INVALID ->
-                                        LOGGER.log(Level.INFO,
-                                                MessageFormat.format("{0} - Received INVALID message from {1}",
-                                                        config.getId(), message.getSenderId()));
+                                    LOGGER.log(Level.INFO,
+                                            MessageFormat.format("{0} - Received INVALID message from {1}",
+                                                    config.getId(), message.getSenderId()));
 
                                 default ->
-                                        LOGGER.log(Level.INFO,
-                                                MessageFormat.format("{0} - Received unknown message from {1}",
-                                                        config.getId(), message.getSenderId()));
+                                    LOGGER.log(Level.INFO,
+                                            MessageFormat.format("{0} - Received unknown message from {1}",
+                                                    config.getId(), message.getSenderId()));
                             }
 
                         }).start();

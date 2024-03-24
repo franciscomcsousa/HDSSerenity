@@ -50,7 +50,7 @@ public class Client {
             
             System.out.println("Client started. \n" +
                     "Type 'transfer <destination> <value>' to make a transfer. \n" +
-                    "Type 'check_balance <node PubKey>' to make a transfer. \n" +
+                    "Type 'balance <account id>' to check the balance. \n" +
                     "Type 'quit' to quit.");
             System.out.println();
             System.out.print(">> ");
@@ -78,7 +78,8 @@ public class Client {
                         scanner.close();
                         System.exit(0);
                     default:
-                        System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer. Type 'quit' to quit.");
+                        System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer. " +
+                            "Type 'balance <account id>' to check the balance. Type 'quit' to quit.");
                 }
             }
 

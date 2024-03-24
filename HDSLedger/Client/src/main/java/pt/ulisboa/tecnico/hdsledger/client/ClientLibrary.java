@@ -70,6 +70,24 @@ public class ClientLibrary {
 
         linkToNodes.broadcast(clientMessage);
 
+        // Client waits for a smallQuorum (f + 1) of RESPONSE messages using the message bucket
+        System.out.println(MessageFormat.format("{0} - Waiting for a quorum of responses for amount \"{1}\"", clientConfig.getId(), amount));
+        while (true) {
+            // Sleep for a while to avoid busy waiting
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            if (receivedResponses >= smallQuorumSize) {
+                System.out.println(MessageFormat.format("{0} - Received a quorum of responses for amount \"{1}\"", clientConfig.getId(), amount));
+                System.out.println();
+                System.out.print(">> ");
+                receivedResponses = 0;
+                break;
+            }
+        }
     }
 
 
