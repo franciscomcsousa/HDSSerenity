@@ -73,7 +73,7 @@ public class Node {
 
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
-            nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs);
+            nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs, clientConfigs);
             clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeConfigs, nodeService);
 
             // FAULTY LEADER BYZANTINE TEST

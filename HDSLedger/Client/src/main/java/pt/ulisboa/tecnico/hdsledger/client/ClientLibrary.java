@@ -35,9 +35,9 @@ public class ClientLibrary {
         receivedResponses = 0;
 
         // Create a message and broadcast it to the nodes
-        ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.APPEND);
-        clientMessage.setMessage(value);
-        linkToNodes.broadcast(clientMessage);
+        //ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.APPEND);
+        //clientMessage.setMessage(value);
+        //linkToNodes.broadcast(clientMessage);
 
         // Client waits for a smallQuorum (f + 1) of RESPONSE messages using the message bucket
         System.out.println(MessageFormat.format("{0} - Waiting for a quorum of responses for value \"{1}\"", clientConfig.getId(), value));
@@ -57,6 +57,27 @@ public class ClientLibrary {
                 break;
             }
         }
+    }
+
+    public void transfer(String nodeId, String destination, Integer amount) {
+        // Reset the number of received responses
+        receivedResponses = 0;
+
+        // Create a message and broadcast it to the nodes
+        ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.TRANSFER);
+        TransferMessage transferMessage = new TransferMessage(nodeId, destination, amount);
+        clientMessage.setMessage(transferMessage.toJson());
+
+        linkToNodes.broadcast(clientMessage);
+
+    }
+
+
+
+        // Checks user balance
+    // TODO
+    public void check_balance(){
+
     }
 
     // Listen for replies from the nodes

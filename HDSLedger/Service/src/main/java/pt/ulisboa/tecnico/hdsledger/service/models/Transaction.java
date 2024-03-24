@@ -6,13 +6,13 @@ import java.util.stream.LongStream;
 public class Transaction {
     private String sender;
     private String receiver;
-    private float value;
+    private int value;
     private LongStream nounce;
     private byte[] signature;
 
     private SecureRandom randomGen = new SecureRandom();
 
-    public Transaction(String sender, String receiver, float value){
+    public Transaction(String sender, String receiver, int value){
         this.sender = sender;
         this.receiver = receiver;
         this.value = value;

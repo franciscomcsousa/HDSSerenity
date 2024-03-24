@@ -55,11 +55,16 @@ public class NodeService implements UDPService {
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
 
+    // TODO
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
+    // TODO - maybe make it public for clientService access it
+    // Client Balances state
+    private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
+
     public NodeService(Link link, Link clientLink, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs) {
 
         this.link = link;
         this.clientLink = clientLink;
@@ -71,6 +76,9 @@ public class NodeService implements UDPService {
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
+
+        // Update Map with clients IDs and respective balances
+        Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10));
     }
 
     public ProcessConfig getConfig() {
@@ -148,6 +156,8 @@ public class NodeService implements UDPService {
         if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
             message.setMessage("DIFFERENT VALUE");
         }
+
+        // Create transaction
 
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
@@ -406,7 +416,7 @@ public class NodeService implements UDPService {
             clientMessage.setPosition(position);
 
             // Respond to the clients
-            clientLink.broadcastToClients(clientMessage);
+            clientLink.broadcast(clientMessage);
             
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired

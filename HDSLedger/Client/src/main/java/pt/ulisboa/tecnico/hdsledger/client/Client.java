@@ -48,7 +48,10 @@ public class Client {
             Scanner scanner = new Scanner(System.in);
             String input = "";
             
-            System.out.println("Client started. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
+            System.out.println("Client started. \n" +
+                    "Type 'transfer <destination> <value>' to make a transfer. \n" +
+                    "Type 'check_balance <node PubKey>' to make a transfer. \n" +
+                    "Type 'quit' to quit.");
             System.out.println();
             System.out.print(">> ");
 
@@ -63,18 +66,19 @@ public class Client {
 
                 // Case for each user input
                 switch(splitInput[0]){
-                    case "append":
-                        if (splitInput.length != 2) {
-                            System.out.println("Invalid command. Type 'append <value>' to append a value to the blockchain.");
+                    case "transfer":
+                        if (splitInput.length != 3) {
+                            System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer.");
                             break;
                         }
-                        clientLibrary.append(splitInput[1]);
+                        //clientLibrary.append(splitInput[1]);
+                        clientLibrary.transfer(id, splitInput[1], Integer.valueOf(splitInput[2]));
                         break;
                     case "quit":
                         scanner.close();
                         System.exit(0);
                     default:
-                        System.out.println("Invalid command. Type 'append <value>' to append a value to the blockchain. Type 'quit' to quit.");
+                        System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer. Type 'quit' to quit.");
                 }
             }
 

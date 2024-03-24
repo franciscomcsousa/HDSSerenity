@@ -8,7 +8,7 @@ public class ClientMessage extends Message {
     private String replyTo;
     // Id of the previous message
     private int replyToMessageId;
-    // Message (APPEND, RESPONSE)
+    // Message (TRANSFER, RESPONSE)
     private String message;
     // Position of the message in the ledger
     private int position;
@@ -17,8 +17,8 @@ public class ClientMessage extends Message {
         super(senderId, type);
     }
 
-    public RequestMessage deserializeRequestMessage() {
-        return new Gson().fromJson(this.message, RequestMessage.class);
+    public TransferMessage deserializeRequestMessage() {
+        return new Gson().fromJson(this.message, TransferMessage.class);
     }
 
     public ResponseMessage deserializeResponseMessage() {

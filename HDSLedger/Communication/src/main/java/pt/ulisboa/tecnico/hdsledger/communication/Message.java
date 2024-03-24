@@ -18,7 +18,7 @@ public class Message implements Serializable {
         // CONSENSUS
         PRE_PREPARE, PREPARE, COMMIT, ROUND_CHANGE, ACK, IGNORE, INVALID,
         // CLIENT
-        APPEND, RESPONSE;
+        TRANSFER, RESPONSE;
     }
 
     public Message(String senderId, Type type) {

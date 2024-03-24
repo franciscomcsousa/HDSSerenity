@@ -41,6 +41,13 @@ public class ClientService implements UDPService {
         return this.config;
     }
 
+    private void receivedTransfer(ClientMessage message) {
+        // TODO - perhaps do some verifications here before starting a consensus
+
+        nodeService.startConsensus(message);
+    }
+
+
     @Override
     public void listen() {
         try {
@@ -54,9 +61,10 @@ public class ClientService implements UDPService {
                         // Separate thread to handle each message
                         new Thread(() -> {
                             switch (message.getType()) {
-                                case APPEND ->
+                                case TRANSFER ->
                                 {
-                                    nodeService.startConsensus((ClientMessage) message);
+                                    receivedTransfer((ClientMessage) message);
+                                    //nodeService.startConsensus((ClientMessage) message);
                                 }
 
                                 case ACK ->

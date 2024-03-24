@@ -84,22 +84,6 @@ public class Link {
     }
 
     /*
-     * Broadcasts a message to all clients in the network
-     *
-     * @param data The message to be broadcasted
-     */
-    public void broadcastToClients(Message data) {
-        Gson gson = new Gson();
-
-        nodes.forEach((destId, dest) -> {
-            // If it is a client node, broadcast the message
-                send(destId, gson.fromJson(gson.toJson(data), data.getClass()));
-            }
-        );
-    }
-
-
-    /*
      * Sends a message to a specific node with guarantee of delivery
      *
      * @param nodeId The node identifier
