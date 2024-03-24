@@ -1,9 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
@@ -44,6 +41,15 @@ public class MessageBucket {
         bucket.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
         bucket.get(consensusInstance).putIfAbsent(round, new ConcurrentHashMap<>());
         bucket.get(consensusInstance).get(round).put(message.getSenderId(), message);
+    }
+
+    public Optional<List<ConsensusMessage>> getPrepareMessages(String nodeId, int instance, int round) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+            System.out.println("\noh no!\n");
+            return Optional.empty();
+        }
+
+        return Optional.of(bucket.get(instance).get(round).values().stream().toList());
     }
 
     public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {

@@ -3,6 +3,8 @@ package pt.ulisboa.tecnico.hdsledger.communication.builder;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 
+import java.util.List;
+
 public class ConsensusMessageBuilder {
     private final ConsensusMessage instance;
 
@@ -32,6 +34,11 @@ public class ConsensusMessageBuilder {
 
     public ConsensusMessageBuilder setReplyToMessageId(int replyToMessageId) {
         instance.setReplyToMessageId(replyToMessageId);
+        return this;
+    }
+
+    public ConsensusMessageBuilder setJustification(List<ConsensusMessage> justification) {
+        instance.setJustification(justification);
         return this;
     }
 

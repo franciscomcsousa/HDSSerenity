@@ -2,6 +2,9 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ConsensusMessage extends Message {
 
     // Consensus instance
@@ -12,8 +15,10 @@ public class ConsensusMessage extends Message {
     private String replyTo;
     // Id of the previous message
     private int replyToMessageId;
-    // Message (PREPREPARE, PREPARE, COMMIT)
+    // Message (PREPREPARE, PREPARE, COMMIT, ROUND-CHANGE)
     private String message;
+    // Justification for PREPREPARE and ROUND-CHANGE messages
+    private List<ConsensusMessage> justification = new ArrayList<>();
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
@@ -69,6 +74,14 @@ public class ConsensusMessage extends Message {
 
     public int getReplyToMessageId() {
         return replyToMessageId;
+    }
+
+    public void setJustification(List<ConsensusMessage> justification) {
+        this.justification = justification;
+    }
+
+    public List<ConsensusMessage> getJustification() {
+        return justification;
     }
 
     public void setReplyToMessageId(int replyToMessageId) {

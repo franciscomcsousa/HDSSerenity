@@ -419,26 +419,38 @@ public class NodeService implements UDPService {
      * Check if a PrePrepare is justified
      *
      */
-    public boolean justifyPrePrepare(String nodeId, int instance, int round){
-        return round == 1 || this.justifyRoundChange(nodeId, instance, round);
+    // TODO - use this
+    public boolean justifyPrePrepare(String nodeId, int instance, int round, List<ConsensusMessage> justification){
+        return round == 1 || this.justifyRoundChange(nodeId, instance, round, justification);
     }
 
     /*
     * Check if a Round Change is justified
     *
      */
-    public boolean justifyRoundChange(String nodeId, int instance, int round){
+    public boolean justifyRoundChange(String nodeId, int instance, int round, List<ConsensusMessage> justificationList){
+        // If for all round changes messages, none have prepared a value, round change is justified
         if (roundChangeMessages.nonePreparedJustification(instance, round)) {
             return true;
         }
 
+        // Justification messages is the set of the received Prepared messages
+        // piggybacked to the Round-Change message
+        MessageBucket justificationMessages = new MessageBucket(nodesConfig.length);
+        for (ConsensusMessage message : justificationList) {
+            justificationMessages.addMessage(message);
+        }
+
         Optional<String> prepareQuorumValue = Optional.empty();
         Optional<RoundChangeMessage> highestRoundChangeMessage = roundChangeMessages.highestPrepared(instance, round);
+        // Check if the received Justification messages quorum value matches the Round-Change quorum proposed value
         if (highestRoundChangeMessage.isPresent())
-            prepareQuorumValue = prepareMessages.hasValidPrepareQuorum(
+            prepareQuorumValue = justificationMessages.hasValidPrepareQuorum(
                     nodeId,
                     instance,
                     highestRoundChangeMessage.get().getPreparedRound());
+
+        // TODO - Check signatures of the messages
 
         return prepareQuorumValue.isPresent() &&
                 prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
@@ -477,11 +489,13 @@ public class NodeService implements UDPService {
         // if it has, JustifyRoundChange
         roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
+        List<ConsensusMessage> receivedJustification = message.getJustification();
+
         // TODO - verify if upon rule is only triggered once per round
 
         if (roundChangeValue.isPresent() &&
                 instance.getPreparedRound() < round &&
-                justifyRoundChange(config.getId(), consensusInstance, round)) {
+                justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
 
             System.out.println("ROUND CHANGE QUORUM RECEIVED");
 
@@ -512,7 +526,7 @@ public class NodeService implements UDPService {
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
             // otherwise the value is the one passed as input to this instance
-            if (config.isLeader() && justifyPrePrepare(config.getId(),consensusInstance,round)) {
+            if (config.isLeader()) {
                 String value = instance.getPreparedValue();
                 if (value == null) {
                     value = instance.getInputValue();
@@ -574,6 +588,14 @@ public class NodeService implements UDPService {
                 .setRound(round)
                 .setMessage(roundChangeMessage.toJson())
                 .build();
+
+        // Add any Prepare messages as justification
+        Optional<List<ConsensusMessage>> justificationMessages =
+                prepareMessages.getPrepareMessages(config.getId(), consensusInstance.get(), round);
+
+        if (justificationMessages.isPresent()) {
+            consensusMessage.setJustification(justificationMessages.get());
+        }
 
         this.link.broadcast(consensusMessage);
 
