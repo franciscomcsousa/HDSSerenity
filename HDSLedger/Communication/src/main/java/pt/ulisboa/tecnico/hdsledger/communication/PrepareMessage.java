@@ -4,15 +4,15 @@ import com.google.gson.Gson;
 
 public class PrepareMessage {
     
-    // Value
-    private String value;
+    // Block
+    private String block;
 
-    public PrepareMessage(String value) {
-        this.value = value;
+    public PrepareMessage(String block) {
+        this.block = block;
     }
 
-    public String getValue() {
-        return value;
+    public String getBlock() {
+        return block;
     }
 
     public String toJson() {

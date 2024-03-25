@@ -5,6 +5,8 @@ import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
 import java.text.MessageFormat;
 
+import com.google.gson.Gson;
+
 //
 // Client library used as a bridge between the client and the nodes in the blockchain
 //
@@ -116,11 +118,15 @@ public class ClientLibrary {
                                 break;
                             case RESPONSE:
                                 ClientMessage clientMessage = (ClientMessage) message;
+                                TransferMessage transferMessage = new Gson().fromJson(clientMessage.getMessage(), TransferMessage.class);
                                 if (receivedResponses < smallQuorumSize) {
                                     receivedResponses++;
                                 }
-                                System.out.println(MessageFormat.format("{0} - Commit finished from node {1} for value \"{2}\" in position {3}", 
-                                    clientConfig.getId(), clientMessage.getSenderId(), clientMessage.getMessage(), clientMessage.getPosition()));
+                                System.out.println(MessageFormat.format(
+                                    "{0} - Commit finished from node {1} in position {2} for transfer of value {3} to node {4}", 
+                                    clientConfig.getId(), clientMessage.getSenderId(), clientMessage.getPosition(),
+                                    transferMessage.getAmount(),
+                                    transferMessage.getReceiver()));
                                 System.out.println();
                                 System.out.print(">> ");
                                 break;

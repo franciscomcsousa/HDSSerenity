@@ -7,9 +7,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import com.google.gson.Gson;
+
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
@@ -102,27 +105,14 @@ public class NodeService implements UDPService {
         return this.leaderConfig.getId().equals(id);
     }
  
-    public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
-        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
+    public ConsensusMessage createConsensusMessage(Block block, int instance, int round) {
+        String blockToJson = block.toJson();
+        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(blockToJson);
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
                 .setConsensusInstance(instance)
                 .setRound(round)
                 .setMessage(prePrepareMessage.toJson())
-                .build();
-
-        return consensusMessage;
-    }
-
-    // Overload
-    public ConsensusMessage createConsensusMessage(String value, int instance, int round, String replyTo) {
-        PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
-
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                .setConsensusInstance(instance)
-                .setRound(round)
-                .setMessage(prePrepareMessage.toJson())
-                .setReplyTo(replyTo)
                 .build();
 
         return consensusMessage;
@@ -135,10 +125,10 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(ClientMessage message) {
+    public void startConsensus(Block block) {
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(message.getMessage()));
+        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(block));
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
@@ -157,12 +147,10 @@ public class NodeService implements UDPService {
             }
         }
 
-        // DIFF VALUE BYZANTINE TEST
-        if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
-            message.setMessage("DIFFERENT VALUE");
-        }
-
-        // Create transaction
+        // TODO FIX DIFF VALUE BYZANTINE TEST
+        //if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
+        //    message.setMessage("DIFFERENT VALUE");
+        //}
 
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
@@ -170,8 +158,7 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
 
-            ConsensusMessage m = this.createConsensusMessage(message.getMessage(), localConsensusInstance,
-                instance.getCurrentRound(), message.getSenderId());
+            ConsensusMessage m = this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound());
             this.link.broadcast(m);
 
         } else {
@@ -205,7 +192,7 @@ public class NodeService implements UDPService {
 
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
 
-        String value = prePrepareMessage.getValue();
+        Block block = Block.fromJson(prePrepareMessage.getBlock());
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -217,7 +204,7 @@ public class NodeService implements UDPService {
             return;
 
         // Set instance value
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(block));
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -230,12 +217,12 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round));
         }
 
-        PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
+        PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getBlock());
 
-        // DIFFERENT PREPARE VALUE BYZANTINE TEST
-        if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
-            prepareMessage = new PrepareMessage("DIFFERENT VALUE");
-        }
+        // TODO FIX DIFFERENT PREPARE VALUE BYZANTINE TEST
+        //if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
+        //    prepareMessage = new PrepareMessage("DIFFERENT VALUE");
+        //}
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
@@ -249,7 +236,7 @@ public class NodeService implements UDPService {
 
         // Set the timer of a new consensus for the node
         // and a call for the RoundTimer class
-        if (!senderId.equals(config.getId())) {
+        if (!senderId.equals(config.getId()) && timerConsensus != null) {
             timerConsensus.cancel();
             timerConsensus.purge();
 
@@ -272,7 +259,7 @@ public class NodeService implements UDPService {
 
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
-        String value = prepareMessage.getValue();
+        Block block = Block.fromJson(prepareMessage.getBlock());
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -283,7 +270,7 @@ public class NodeService implements UDPService {
         prepareMessages.addMessage(message);
 
         // Set instance values
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(block));
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
@@ -310,21 +297,22 @@ public class NodeService implements UDPService {
         }
 
         // Find value with valid quorum
-        Optional<String> preparedValue = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
-        if (preparedValue.isPresent() && instance.getPreparedRound() < round) {
-            instance.setPreparedValue(preparedValue.get());
+        Optional<Block> preparedBlock = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
+        //System.out.println(preparedBlock.isPresent());
+        if (preparedBlock.isPresent() && instance.getPreparedRound() < round) {
+            instance.setPreparedBlock(preparedBlock.get());
             instance.setPreparedRound(round);
 
             // Must reply to prepare message senders
             Collection<ConsensusMessage> sendersMessage = prepareMessages.getMessages(consensusInstance, round)
                     .values();
 
-            CommitMessage c = new CommitMessage(preparedValue.get());
+            CommitMessage c = new CommitMessage(preparedBlock.get().toJson());
 
-            // DIFFERENT COMMIT VALUE BYZANTINE TEST
-            if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
-                c = new CommitMessage("DIFFERENT VALUE");
-            }
+            // TODO FIX DIFFERENT COMMIT VALUE BYZANTINE TEST
+            //if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
+            //    c = new CommitMessage("DIFFERENT VALUE");
+            //}
 
             instance.setCommitMessage(c);
 
@@ -380,15 +368,17 @@ public class NodeService implements UDPService {
             return;
         }
 
-        Optional<String> commitValue = commitMessages.hasValidCommitQuorum(config.getId(),
+        Optional<Block> commitBlock = commitMessages.hasValidCommitQuorum(config.getId(),
                 consensusInstance, round);
 
-        if (commitValue.isPresent() && instance.getCommittedRound() < round) {
+        if (commitBlock.isPresent() && instance.getCommittedRound() < round) {
 
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            String value = commitValue.get();
+            // TODO for testing purposes until implementation is finished
+            String value = "TESTE " + consensusInstance;
+            //String value = new Gson().toJson(commitBlock.get());
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
@@ -456,7 +446,7 @@ public class NodeService implements UDPService {
             justificationMessages.addMessage(message);
         }
 
-        Optional<String> prepareQuorumValue = Optional.empty();
+        Optional<Block> prepareQuorumValue = Optional.empty();
         Optional<RoundChangeMessage> highestRoundChangeMessage = roundChangeMessages.highestPrepared(instance, round);
         // Check if the received Justification messages quorum value matches the Round-Change quorum proposed value
         if (highestRoundChangeMessage.isPresent())
@@ -468,7 +458,7 @@ public class NodeService implements UDPService {
         // TODO - Check signatures of the messages
 
         return prepareQuorumValue.isPresent() &&
-                prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
+                prepareQuorumValue.get().toJson().equals(highestRoundChangeMessage.get().getPreparedValue());
     }
 
     /*
@@ -542,9 +532,9 @@ public class NodeService implements UDPService {
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
             // otherwise the value is the one passed as input to this instance
             if (config.isLeader()) {
-                String value = instance.getPreparedValue();
+                Block value = instance.getPreparedBlock();
                 if (value == null) {
-                    value = instance.getInputValue();
+                    value = instance.getInputBlock();
                 }
                 // Start a new consensus by broadcasting a PRE-PREPARE message
                 LOGGER.log(Level.INFO,
@@ -581,15 +571,15 @@ public class NodeService implements UDPService {
 
         // This needs to be either a string or an empty string, if this were to be null,
         // it would be mistaken for the null return of some <Optional>String return type functions
-        String preparedValue = existingConsensus.getPreparedValue() != null ? existingConsensus.getPreparedValue() : "";
-        int preparedRound = existingConsensus.getPreparedValue() != null ? existingConsensus.getCurrentRound() : -1;
+        String preparedValue = existingConsensus.getPreparedBlock() != null ? existingConsensus.getPreparedBlock().toJson() : "";
+        int preparedRound = existingConsensus.getPreparedBlock() != null ? existingConsensus.getCurrentRound() : -1;
 
         // Increment the round in the instanceInfo of the node
         existingConsensus.incrementCurrentRound();
         this.instanceInfo.put(timerInstance, existingConsensus);
 
         // just to be clearer to read
-        String value = existingConsensus.getInputValue();
+        String value = existingConsensus.getInputBlock().toJson();
         int round = existingConsensus.getCurrentRound();
 
         LOGGER.log(Level.INFO,

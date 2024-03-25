@@ -22,7 +22,7 @@ public class TransferMessage {
         return receiver;
     }
 
-    public Integer getAmount() { return amount; }
+    public int getAmount() { return amount; }
 
     public String toJson() {
         return new Gson().toJson(this);

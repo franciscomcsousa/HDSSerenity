@@ -32,10 +32,10 @@ if len(sys.argv) == 3:
     client_config = sys.argv[2]
     if server_config not in server_configs or client_config not in client_configs:
         server_config = server_configs[0]
-        client_config = client_configs[0]
+        client_config = client_configs[1]
 else:
     server_config = server_configs[0]
-    client_config = client_configs[0]
+    client_config = client_configs[1]
 
 # Add the .json extension to the config file names
 server_config += ".json"

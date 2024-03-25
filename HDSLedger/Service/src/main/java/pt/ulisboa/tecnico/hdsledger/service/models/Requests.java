@@ -4,10 +4,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.function.Consumer;
 
-import com.google.gson.Gson;
-
 import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.TransferMessage;
 
 public class Requests {
     
@@ -16,10 +13,6 @@ public class Requests {
     private final int blockSize = 2;
 
     public Requests() {
-    }
-
-    public Queue<ClientMessage> getRequests() {
-        return requests;
     }
 
     public void addRequest(ClientMessage request) {
@@ -45,9 +38,7 @@ public class Requests {
             Block block = new Block();
             for (int i = 0; i < blockSize; i++) {
                 ClientMessage request = requests.poll();
-                TransferMessage transferMessage = new Gson().fromJson(request.getMessage(), TransferMessage.class);
-                Transaction transaction = new Transaction(transferMessage.getSender(), transferMessage.getReceiver(), transferMessage.getAmount());
-                block.addTransaction(transaction);
+                block.addRequest(request);
             }
             return block;
         }

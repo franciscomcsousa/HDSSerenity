@@ -1,22 +1,17 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.security.SecureRandom;
-import java.util.stream.LongStream;
-
 public class Transaction {
     private String sender;
     private String receiver;
     private int value;
-    private LongStream nounce;
+    private int nounce;
     private byte[] signature;
-
-    private SecureRandom randomGen = new SecureRandom();
 
     public Transaction(String sender, String receiver, int value){
         this.sender = sender;
         this.receiver = receiver;
         this.value = value;
-        this.nounce = randomGen.longs();
+        this.nounce = 0;
     }
 
     public float getValue() {
@@ -31,7 +26,7 @@ public class Transaction {
         return sender;
     }
 
-    public LongStream getNounce() {
+    public int getNounce() {
         return nounce;
     }
 

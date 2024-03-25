@@ -47,17 +47,13 @@ public class ClientService implements UDPService {
     }
 
     private void receivedTransfer(ClientMessage message) {
-        // TODO - Uncomment everything after changing consensus to start with a block
         // Add the request to the queue
-        //requests.addRequest(message);
-        // If there are enough requests, create a block and start consensus
-        //if (requests.isEnoughRequests()) {
-            nodeService.startConsensus(message);
-            // TODO - Remove line below after changing consensus to start with a block (commented for now)
-            //nodeService.startConsensus(requests.createBlock());
-        //}
+        requests.addRequest(message);
+        
+        if (requests.isEnoughRequests()) {
+            nodeService.startConsensus(requests.createBlock());
+        }
     }
-
 
     @Override
     public void listen() {

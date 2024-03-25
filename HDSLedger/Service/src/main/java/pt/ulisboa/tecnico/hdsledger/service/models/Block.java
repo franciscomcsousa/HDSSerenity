@@ -3,51 +3,52 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.Gson;
+
+import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
+
 public class Block {
 
-    private List<Transaction> transactions = new ArrayList<>();
+    private List<ClientMessage> messages = new ArrayList<>();
     private int blockSize = 2;
-    private byte[] signature;
+    // block hash
+    private String hash;
 
     public Block() {
 
-    }
-
-    public Block(int blockSize){
-        this.blockSize = blockSize;
     }
 
     public int getBlockSize() {
         return blockSize;
     }
 
-    public byte[] getSignature() {
-        return signature;
+    public List<ClientMessage> getRequests() {
+        return messages;
     }
 
-    public List<Transaction> getTransactions() {
-        return transactions;
-    }
-
-    public boolean isBlockFull(){
-        return transactions.size() >= blockSize;
-    }
-
-    public boolean addTransaction(Transaction transaction){
-        if (!this.isBlockFull()){
-            this.transactions.add(transaction);
-            return true;
-        }
-        return false;
+    public void addRequest(ClientMessage message){
+        this.messages.add(message);
     }
     
     public String getSignable(){
         String signable = "";
-        for (Transaction transaction:
-             getTransactions()) {
-            signable = signable.concat(transaction.getSignable());
+        for (ClientMessage message:
+             getRequests()) {
+            signable = signable.concat(message.getSignable());
         }
         return signable;
     }
 
+    public static Block fromJson(String json){
+        return new Gson().fromJson(json, Block.class);
+    }
+
+    public String toJson() {
+        return new Gson().toJson(this);
+    }
+
+    @Override
+    public String toString() {
+        return this.toJson();
+    }
 }
