@@ -70,6 +70,7 @@ public class ClientService implements UDPService {
             Block block = new Block();
             block.setTransactions(transactionList);
             nodeService.startConsensus(block);
+            transactionList.clear();
         }
     }
 
