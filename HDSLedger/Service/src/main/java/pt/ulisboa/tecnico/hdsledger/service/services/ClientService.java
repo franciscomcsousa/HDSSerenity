@@ -47,6 +47,8 @@ public class ClientService implements UDPService {
     }
 
     private void receivedTransfer(ClientMessage message) {
+        // TODO - add logic that verifies the validity of the transfer
+
         // Add the request to the queue
         requests.addRequest(message);
         

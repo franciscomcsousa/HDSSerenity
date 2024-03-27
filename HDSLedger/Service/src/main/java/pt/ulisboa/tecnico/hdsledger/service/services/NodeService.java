@@ -128,6 +128,7 @@ public class NodeService implements UDPService {
     public void startConsensus(Block block) {
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
+        // TODO - future problem i feel
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(block));
 
         // If startConsensus was already called for a given round
@@ -217,6 +218,7 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round));
         }
 
+        // TODO - change to be block instead of string
         PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getBlock());
 
         // TODO FIX DIFFERENT PREPARE VALUE BYZANTINE TEST
@@ -297,17 +299,19 @@ public class NodeService implements UDPService {
         }
 
         // Find value with valid quorum
-        Optional<Block> preparedBlock = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
-        //System.out.println(preparedBlock.isPresent());
+        Optional<String> preparedBlock = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
         if (preparedBlock.isPresent() && instance.getPreparedRound() < round) {
-            instance.setPreparedBlock(preparedBlock.get());
+
+            Block quorumBlock = Block.fromJson(preparedBlock.get());
+
+            instance.setPreparedBlock(quorumBlock);
             instance.setPreparedRound(round);
 
             // Must reply to prepare message senders
             Collection<ConsensusMessage> sendersMessage = prepareMessages.getMessages(consensusInstance, round)
                     .values();
 
-            CommitMessage c = new CommitMessage(preparedBlock.get().toJson());
+            CommitMessage c = new CommitMessage(preparedBlock.get());
 
             // TODO FIX DIFFERENT COMMIT VALUE BYZANTINE TEST
             //if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
@@ -368,7 +372,7 @@ public class NodeService implements UDPService {
             return;
         }
 
-        Optional<Block> commitBlock = commitMessages.hasValidCommitQuorum(config.getId(),
+        Optional<String> commitBlock = commitMessages.hasValidCommitQuorum(config.getId(),
                 consensusInstance, round);
 
         if (commitBlock.isPresent() && instance.getCommittedRound() < round) {
@@ -396,6 +400,7 @@ public class NodeService implements UDPService {
                             "{0} - Current Ledger: {1}",
                             config.getId(), String.join("", ledger)));
             }
+            System.out.println("NEW LEDGER IS: " + ledger);
 
             lastDecidedConsensusInstance.getAndIncrement();
 
@@ -446,7 +451,7 @@ public class NodeService implements UDPService {
             justificationMessages.addMessage(message);
         }
 
-        Optional<Block> prepareQuorumValue = Optional.empty();
+        Optional<String> prepareQuorumValue = Optional.empty();
         Optional<RoundChangeMessage> highestRoundChangeMessage = roundChangeMessages.highestPrepared(instance, round);
         // Check if the received Justification messages quorum value matches the Round-Change quorum proposed value
         if (highestRoundChangeMessage.isPresent())
@@ -458,7 +463,7 @@ public class NodeService implements UDPService {
         // TODO - Check signatures of the messages
 
         return prepareQuorumValue.isPresent() &&
-                prepareQuorumValue.get().toJson().equals(highestRoundChangeMessage.get().getPreparedValue());
+                prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
     }
 
     /*

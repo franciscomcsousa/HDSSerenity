@@ -5,10 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.gson.Gson;
 
-import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
 public class MessageBucket {
@@ -47,51 +44,52 @@ public class MessageBucket {
 
     public Optional<List<ConsensusMessage>> getPrepareMessages(String nodeId, int instance, int round) {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
-            System.out.println("\noh no!\n");
+            //System.out.println("\noh no!\n");
             return Optional.empty();
         }
 
         return Optional.of(bucket.get(instance).get(round).values().stream().toList());
     }
 
-    public Optional<Block> hasValidPrepareQuorum(String nodeId, int instance, int round) {
+    public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
             return Optional.empty();
 
+        //System.out.println("Not null");
+
         // Create mapping of value to frequency
-        HashMap<Block, Integer> frequency = new HashMap<>();
+        HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
-            Block block = Block.fromJson(prepareMessage.getBlock());
-            //System.out.println(frequency.get(block));
-            frequency.put(block, frequency.getOrDefault(block, 0) + 1);
-        });
+            //Block block = Block.fromJson(prepareMessage.getBlock());
+            // TODO - please do not let this be a key
 
-        //System.out.println("Frequency: " + frequency);
+            frequency.put(prepareMessage.getBlock(), frequency.getOrDefault(prepareMessage.getBlock(), 0) + 1);
+        });
 
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<Block, Integer> entry) -> {
+        return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
             return entry.getValue() >= quorumSize;
-        }).map((Map.Entry<Block, Integer> entry) -> {
+        }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();
     }
 
-    public Optional<Block> hasValidCommitQuorum(String nodeId, int instance, int round) {
+    public Optional<String> hasValidCommitQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
-        HashMap<Block, Integer> frequency = new HashMap<>();
+        HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
             CommitMessage commitMessage = message.deserializeCommitMessage();
-            Block block = Block.fromJson(commitMessage.getBlock());
-            frequency.put(block, frequency.getOrDefault(block, 0) + 1);
+            //Block block = Block.fromJson(commitMessage.getBlock());
+            frequency.put(commitMessage.getBlock(), frequency.getOrDefault(commitMessage.getBlock(), 0) + 1);
         });
 
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<Block, Integer> entry) -> {
+        return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
             return entry.getValue() >= quorumSize;
-        }).map((Map.Entry<Block, Integer> entry) -> {
+        }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();
     }
