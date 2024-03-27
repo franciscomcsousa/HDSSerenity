@@ -55,8 +55,6 @@ public class MessageBucket {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
             return Optional.empty();
 
-        //System.out.println("Not null");
-
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {

@@ -9,32 +9,34 @@ import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
 
 public class Block {
 
-    private List<ClientMessage> messages = new ArrayList<>();
-    private int blockSize = 2;
-    // block hash
-    private String hash;
+    private List<Transaction> transactions;
+
+    private int maxBlockSize = 2;
+
+    // TODO
+    // Node who created
+    private int nodeId;
 
     public Block() {
 
     }
 
-    public int getBlockSize() {
-        return blockSize;
+    public int getMaxBlockSize() {
+        return maxBlockSize;
     }
 
-    public List<ClientMessage> getRequests() {
-        return messages;
-    }
+    public int getBlockSize() { return transactions.size(); }
 
-    public void addRequest(ClientMessage message){
-        this.messages.add(message);
-    }
-    
+    public List<Transaction> getTransactions() { return transactions; }
+
+    public void setTransactions(List<Transaction> transactions) { this.transactions = transactions; }
+
+
+    // TODO - change to only sign the block stuff
     public String getSignable(){
         String signable = "";
-        for (ClientMessage message:
-             getRequests()) {
-            signable = signable.concat(message.getSignable());
+        for (Transaction transaction : getTransactions()) {
+            signable = signable.concat(transaction.getSignable());
         }
         return signable;
     }

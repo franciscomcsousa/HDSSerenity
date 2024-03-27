@@ -2,10 +2,14 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
+import pt.ulisboa.tecnico.hdsledger.service.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -31,6 +35,9 @@ public class ClientService implements UDPService {
     // Requests queue
     private final Requests requests;
 
+    // Current Block
+    private List<Transaction> transactionList = new ArrayList<>();
+
     public ClientService(Link link, ProcessConfig config,
                        ProcessConfig[] nodesConfigs, ProcessConfig[] clientConfigs, NodeService nodeService, Requests requests) {
 
@@ -47,13 +54,22 @@ public class ClientService implements UDPService {
     }
 
     private void receivedTransfer(ClientMessage message) {
-        // TODO - add logic that verifies the validity of the transfer
+        // TODO - add logic that verifies the validity of the
+        //  transfer before creating transactions and adding to the requests
 
         // Add the request to the queue
         requests.addRequest(message);
-        
-        if (requests.isEnoughRequests()) {
-            nodeService.startConsensus(requests.createBlock());
+
+        // Create Transaction and add to the transactionList
+        transactionList.add(requests.createTransaction());
+
+
+        // TODO - change for blockSize
+        if (transactionList.size() == 2) {
+            // Creates block and starts consensus
+            Block block = new Block();
+            block.setTransactions(transactionList);
+            nodeService.startConsensus(block);
         }
     }
 

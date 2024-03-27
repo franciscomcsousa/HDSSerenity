@@ -17,7 +17,7 @@ public class ClientMessage extends Message {
         super(senderId, type);
     }
 
-    public TransferMessage deserializeRequestMessage() {
+    public TransferMessage deserializeTransferMessage() {
         return new Gson().fromJson(this.message, TransferMessage.class);
     }
 

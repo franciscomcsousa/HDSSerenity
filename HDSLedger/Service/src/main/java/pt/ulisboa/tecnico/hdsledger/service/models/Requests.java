@@ -5,6 +5,7 @@ import java.util.Queue;
 import java.util.function.Consumer;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.TransferMessage;
 
 public class Requests {
     
@@ -33,14 +34,26 @@ public class Requests {
         }
     }
 
-    public Block createBlock() {
+//    public Block createBlock() {
+//        synchronized (requests) {
+//            Block block = new Block();
+//            for (int i = 0; i < blockSize; i++) {
+//                ClientMessage request = requests.poll();
+//                block.addRequest(request);
+//            }
+//            return block;
+//        }
+//    }
+
+    public Transaction createTransaction() {
+        ClientMessage request;
         synchronized (requests) {
-            Block block = new Block();
-            for (int i = 0; i < blockSize; i++) {
-                ClientMessage request = requests.poll();
-                block.addRequest(request);
-            }
-            return block;
+            request = requests.poll();
         }
+        TransferMessage transferMessage = request.deserializeTransferMessage();
+
+        // TODO - more logic missing in terms of verifications and creation
+        return new Transaction(transferMessage.getSender(), transferMessage.getReceiver(), transferMessage.getAmount());
     }
+
 }
