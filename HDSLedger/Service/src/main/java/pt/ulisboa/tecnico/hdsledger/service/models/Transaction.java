@@ -25,7 +25,7 @@ public class Transaction {
         this.nonce = newNonce;
     }
 
-    public float getAmount() {
+    public int getAmount() {
         return amount;
     }
 

@@ -39,21 +39,27 @@ public class ClientService implements UDPService {
         this.nodeService = nodeService;
     }
 
-    public ProcessConfig getConfig() {
-        return this.config;
-    }
-
     private void receivedTransfer(ClientMessage message) {
         TransferMessage transferMessage = message.deserializeTransferMessage();
         String receiverId = transferMessage.getReceiver();
+        String senderId = transferMessage.getSender();
 
         // Creates Transaction
         Transaction newTransaction = new Transaction(transferMessage.getSender(),receiverId,transferMessage.getAmount());
 
         // Verify ReceiverID, does it exist?
-        // TODO - can the client send money to himself?
         if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
-            TResponseMessage tResponseMessage = new TResponseMessage(newTransaction.toJson(), TResponseMessage.Status.FAILED);
+            TResponseMessage tResponseMessage = new TResponseMessage(newTransaction.toJson(), TResponseMessage.Status.FAILED_RECEIVER);
+            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+            clientMessage.setMessage(tResponseMessage.toJson());
+
+            link.send(message.getSenderId(), clientMessage);
+            return;
+        }
+
+        // Verify SenderID different from ReceiverID
+        if (receiverId.equals(senderId)){
+            TResponseMessage tResponseMessage = new TResponseMessage(newTransaction.toJson(), TResponseMessage.Status.FAILED_SENDER);
             ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
             clientMessage.setMessage(tResponseMessage.toJson());
 
@@ -62,7 +68,18 @@ public class ClientService implements UDPService {
         }
 
         nodeService.newTransferRequest(newTransaction);
+    }
 
+    private void receivedBalance(ClientMessage message) {
+        String senderId = message.getSenderId();
+        int balance = nodeService.getBalance(senderId);
+
+        // Create message with balance
+        BResponseMessage bResponseMessage = new BResponseMessage(balance);
+        ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.BALANCE_RESPONSE);
+        clientMessage.setMessage(bResponseMessage.toJson());
+
+        link.send(senderId, clientMessage);
     }
 
     @Override
@@ -84,6 +101,13 @@ public class ClientService implements UDPService {
                                             config.getId(), message.getSenderId()));
 
                                     receivedTransfer((ClientMessage) message);
+                                }
+
+                                case BALANCE ->
+                                {
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received BALANCE message from {1}",
+                                            config.getId(), message.getSenderId()));
+                                    receivedBalance((ClientMessage) message);
                                 }
 
                                 case ACK ->

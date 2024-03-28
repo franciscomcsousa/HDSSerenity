@@ -8,7 +8,7 @@ public class ClientMessage extends Message {
     private String replyTo;
     // Id of the previous message
     private int replyToMessageId;
-    // Message (TRANSFER, RESPONSE)
+    // Message (TRANSFER, BALANCE, RESPONSE)
     private String message;
 
     public ClientMessage(String senderId, Type type) {
@@ -25,6 +25,10 @@ public class ClientMessage extends Message {
 
     public TResponseMessage deserializeTResponseMessage() {
         return new Gson().fromJson(this.message, TResponseMessage.class);
+    }
+
+    public BResponseMessage deserializeBResponseMessage() {
+        return new Gson().fromJson(this.message, BResponseMessage.class);
     }
 
     public String getMessage() {

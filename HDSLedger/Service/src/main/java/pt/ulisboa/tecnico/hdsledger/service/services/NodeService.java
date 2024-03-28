@@ -59,9 +59,11 @@ public class NodeService implements UDPService {
 
     private ArrayList<Block> ledger = new ArrayList<Block>();
 
-    // TODO - maybe make it public for clientService access it
-    // Client Balances state
+    // Client Balances
     private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
+
+    // Auxiliary client balances for checking if the client has enough money to do a transaction
+    private final Map<String, Integer> auxClientsBalance = new ConcurrentHashMap<>();
 
     // Transfer Requests Queue
     private final List<Transaction> transactionRequests = new LinkedList<>();
@@ -82,6 +84,7 @@ public class NodeService implements UDPService {
 
         // Update Map with clients IDs and respective balances
         Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10));
+        Arrays.stream(clientConfigs).forEach(client -> this.auxClientsBalance.put(client.getId(), 10));
     }
 
     public ProcessConfig getConfig() {
@@ -123,6 +126,11 @@ public class NodeService implements UDPService {
         return newBlock;
     }
 
+    // Get the balance of a specific client passed as an argument
+    public int getBalance(String clientId) {
+        return clientsBalance.get(clientId);
+    }
+
     /**
      * Adds new Transaction to the Requests
      * Verifies if there are enough Transactions to create a block
@@ -135,24 +143,30 @@ public class NodeService implements UDPService {
         // TODO - more Transaction verification needed
 
         // Verifies if client has enough money to do that transaction
-        if (clientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
-            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED);
+        if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() || 
+        auxClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+            auxClientsBalance.forEach((key, value) -> auxClientsBalance.put(key, clientsBalance.get(key)));
+            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_BALANCE);
             ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
             clientMessage.setMessage(tResponseMessage.toJson());
 
-            link.send(transaction.getSender(), clientMessage);
+            clientLink.send(transaction.getSender(), clientMessage);
             return;
         }
 
         // Adds the transaction to the Queue
         transactionRequests.add(transaction);
+        auxClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
+
         Block newBlock = new Block();
 
         // if there are enough Transactions for a block startConsensus
+        // TODO maybe change so it doesnt create a useless block
         if (transactionRequests.size() == newBlock.getMaxBlockSize()) {
+            // Reset the auxClientsBalance
+            auxClientsBalance.forEach((key, value) -> auxClientsBalance.put(key, clientsBalance.get(key)));
             startConsensus();
         }
-
     }
 
 
@@ -431,7 +445,6 @@ public class NodeService implements UDPService {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            //String value = new Gson().toJson(commitBlock.get());
             Block blockToLedger = Block.fromJson(commitBlock.get());
 
             // Append value to the ledger (must be synchronized to be thread-safe)
@@ -459,15 +472,18 @@ public class NodeService implements UDPService {
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
                             config.getId(), consensusInstance, round, true));
 
-            // Broadcast to all the clients for now
-            // TODO - dont add test value to ledger
-
             int position = ledger.size();
 
-            // Send TransferResponse for each transaction in the block committed
             Block committedBlock = Block.fromJson(commitMessage.getBlock());
-
+            
+            // Update client balances and send TransferResponse for each transaction in the block committed
             for (Transaction transaction : committedBlock.getTransactions()) {
+                // Update the balances of the clients
+                synchronized(clientsBalance) {
+                    clientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
+                    clientsBalance.put(transaction.getReceiver(), clientsBalance.get(transaction.getReceiver()) + transaction.getAmount());
+                    auxClientsBalance.forEach((key, value) -> auxClientsBalance.put(key, clientsBalance.get(key)));
+                }
 
                 String senderId = transaction.getSender();
                 TResponseMessage transferResponse = new TResponseMessage(transaction.toJson(), TResponseMessage.Status.SUCCESS);
@@ -477,7 +493,7 @@ public class NodeService implements UDPService {
                 clientMessage.setMessage(transferResponse.toJson());
 
                 // Respond to the client
-                clientLink.send(senderId,clientMessage);
+                clientLink.send(senderId, clientMessage);
             }
 
             // removes the transactions committed from the transactionsRequest

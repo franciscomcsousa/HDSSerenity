@@ -50,7 +50,7 @@ public class Client {
             
             System.out.println("Client started. \n" +
                     "Type 'transfer <destination> <value>' to make a transfer. \n" +
-                    "Type 'balance <account id>' to check the balance. \n" +
+                    "Type 'balance' to check the balance. \n" +
                     "Type 'quit' to quit.");
             System.out.println();
             System.out.print(">> ");
@@ -71,8 +71,10 @@ public class Client {
                             System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer.");
                             break;
                         }
-                        //clientLibrary.append(splitInput[1]);
                         clientLibrary.transfer(id, splitInput[1], Integer.valueOf(splitInput[2]));
+                        break;
+                    case "balance": case "b":
+                        clientLibrary.check_balance();
                         break;
                     case "quit":
                         scanner.close();

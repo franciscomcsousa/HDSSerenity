@@ -20,7 +20,7 @@ public class Message implements Serializable {
         // COMMUNICATION
         ACK, IGNORE, INVALID,
         // CLIENT
-        TRANSFER, TRANSFER_RESPONSE, RESPONSE;
+        TRANSFER, TRANSFER_RESPONSE, BALANCE, BALANCE_RESPONSE, RESPONSE;
     }
 
     public Message(String senderId, Type type) {
