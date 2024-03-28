@@ -111,6 +111,12 @@ public class Link {
                 int messageId = data.getMessageId();
                 int sleepTime = BASE_SLEEP_TIME;
 
+                // sign the message and get the signature
+                byte[] signature = null;
+
+                signature = RSASignature.sign(data.getSignable(), data.getSenderId());
+                data.setSignature(signature);
+
                 // Send message to local queue instead of using network if destination in self
                 if (nodeId.equals(this.config.getId())) {
                     this.localhostQueue.add(data);
@@ -126,13 +132,6 @@ public class Link {
                     LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
-
-                    // sign the message and get the signature
-                    // if its a client sending, the file is named clientX_privKey.priv
-                    byte[] signature = null;
-
-                    signature = RSASignature.sign(data.getSignable(), data.getSenderId());
-                    data.setSignature(signature);
 
                     unreliableSend(destAddress, destPort, data);
 
@@ -202,7 +201,6 @@ public class Link {
             socket.receive(response);
             // signature is appended to the message, since is sha2 is 512 bytes
             byte[] messageBuffer = Arrays.copyOfRange(response.getData(), 0, response.getLength());
-            //signature = Arrays.copyOfRange(response.getData(), response.getLength() - 512, response.getLength());
             serialized = new String(messageBuffer);
             // If the sender is a client (id >= 20), deserialize the message to a RequestMessage
             message = new Gson().fromJson(serialized, Message.class);
@@ -239,7 +237,7 @@ public class Link {
             message.setType(Type.IGNORE);
         }
 
-        // Local messages don't have a need to verify the signature (they don't even send one)
+        // Local messages don't have a need to verify the signature
         if (!local) {
             // If signature doesn't match, message is set to INVALID
             if (!RSASignature.verifySign(message.getSignable(), signature, message.getSenderId())) {
