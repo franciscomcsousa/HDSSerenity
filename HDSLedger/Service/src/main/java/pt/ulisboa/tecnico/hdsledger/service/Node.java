@@ -78,7 +78,7 @@ public class Node {
             // Services that implement listen from UDPService
             // Listen to the nodes in the blockChain
             nodeService = new NodeService(linkToNodes, linkToClients, nodeConfig, leaderConfig, nodeConfigs, clientConfigs, requests);
-            clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeConfigs, nodeService, requests);
+            clientService = new ClientService(linkToClients, nodeConfig, nodeConfigs, clientConfigs, nodeService, requests);
 
             // FAULTY LEADER BYZANTINE TEST
             if(nodeConfig.isLeader() && nodeConfig.getBehavior() == ProcessConfig.Behavior.FAULTY){

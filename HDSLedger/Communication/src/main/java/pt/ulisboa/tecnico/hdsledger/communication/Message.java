@@ -16,9 +16,11 @@ public class Message implements Serializable {
 
     public enum Type {
         // CONSENSUS
-        PRE_PREPARE, PREPARE, COMMIT, ROUND_CHANGE, ACK, IGNORE, INVALID,
+        PRE_PREPARE, PREPARE, COMMIT, ROUND_CHANGE,
+        // COMMUNICATION
+        ACK, IGNORE, INVALID,
         // CLIENT
-        TRANSFER, RESPONSE;
+        TRANSFER, TRANSFER_RESPONSE, RESPONSE;
     }
 
     public Message(String senderId, Type type) {

@@ -12,10 +12,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
-import pt.ulisboa.tecnico.hdsledger.service.models.Block;
-import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
-import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
-import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
+import pt.ulisboa.tecnico.hdsledger.service.models.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -363,6 +360,8 @@ public class NodeService implements UDPService {
 
         commitMessages.addMessage(message);
 
+        CommitMessage commitMessage = message.deserializeCommitMessage();
+
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
         if (instance == null) {
@@ -421,13 +420,27 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round, true));
 
             // Broadcast to all the clients for now
-            int position = ledger.size();
-            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.RESPONSE);
-            clientMessage.setMessage(value);
-            clientMessage.setPosition(position);
+            // TODO - dont add test value to ledger
 
-            // Respond to the clients
-            clientLink.broadcast(clientMessage);
+            int position = ledger.size();
+
+            // Send TransferResponse for each transaction in the block committed
+            Block committedBlock = Block.fromJson(commitMessage.getBlock());
+
+            for (Transaction transaction : committedBlock.getTransactions()) {
+
+                String senderId = transaction.getSender();
+                TResponseMessage transferResponse = new TResponseMessage(transaction.toJson(),position);
+
+
+                ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+                clientMessage.setMessage(transferResponse.toJson());
+                clientMessage.setPosition(position);
+
+                // Respond to the client
+                clientLink.send(senderId,clientMessage);
+            }
+
             
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired

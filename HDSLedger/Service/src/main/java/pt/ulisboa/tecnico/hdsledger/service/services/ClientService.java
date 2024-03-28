@@ -2,8 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
@@ -56,6 +55,16 @@ public class ClientService implements UDPService {
     private void receivedTransfer(ClientMessage message) {
         // TODO - add logic that verifies the validity of the
         //  transfer before creating transactions and adding to the requests
+        Block block = new Block();
+        TransferMessage transferMessage = message.deserializeTransferMessage();
+        String receiverId = transferMessage.getReceiver();
+
+        //Map<String, Integer> clientsBalance = nodeService.getClientsBalance();
+        // Verify ReceiverID
+        if(Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
+            // TODO - add response error message
+            //System.out.println(" Detected error in transfer, with receiver");
+        }
 
         // Add the request to the queue
         requests.addRequest(message);
@@ -63,11 +72,8 @@ public class ClientService implements UDPService {
         // Create Transaction and add to the transactionList
         transactionList.add(requests.createTransaction());
 
-
-        // TODO - change for blockSize
-        if (transactionList.size() == 2) {
+        if (transactionList.size() == block.getMaxBlockSize()) {
             // Creates block and starts consensus
-            Block block = new Block();
             block.setTransactions(transactionList);
             nodeService.startConsensus(block);
             transactionList.clear();
@@ -91,6 +97,7 @@ public class ClientService implements UDPService {
                                 {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received TRANSFER message from {1}",
                                             config.getId(), message.getSenderId()));
+
                                     receivedTransfer((ClientMessage) message);
                                 }
 

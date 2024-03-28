@@ -2,7 +2,6 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.function.Consumer;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.TransferMessage;

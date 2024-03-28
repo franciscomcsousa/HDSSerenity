@@ -25,6 +25,10 @@ public class ClientMessage extends Message {
         return new Gson().fromJson(this.message, ResponseMessage.class);
     }
 
+    public TResponseMessage deserializeTResponseMessage() {
+        return new Gson().fromJson(this.message, TResponseMessage.class);
+    }
+
     public String getMessage() {
         return message;
     }

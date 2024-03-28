@@ -1,9 +1,15 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
+import pt.ulisboa.tecnico.hdsledger.service.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.gson.Gson;
 
@@ -17,7 +23,10 @@ public class ClientLibrary {
     private final Link linkToNodes;
     private final int quorumSize;
     private final int smallQuorumSize;
-    private int receivedResponses = 0;
+
+    // Nonce -> TransferResponseMessages
+    // TODO - may be necessary to see if there are some different responses
+    private Map<Integer, List<TResponseMessage>> transferResponses = new ConcurrentHashMap<>();
 
     public ClientLibrary(ProcessConfig clientConfig, ProcessConfig[] nodeConfigs) {
         this.clientConfig = clientConfig;
@@ -25,45 +34,12 @@ public class ClientLibrary {
         this.linkToNodes = new Link(clientConfig, clientConfig.getPort(), nodeConfigs, ClientMessage.class);
 
         int f = Math.floorDiv(nodeConfigs.length - 1, 3);
-        quorumSize = Math.floorDiv(nodeConfigs.length + f, 2) + 1;
-        smallQuorumSize = f + 1;
+        this.quorumSize = Math.floorDiv(nodeConfigs.length + f, 2) + 1;
+        this.smallQuorumSize = f + 1;
     }
 
-
-    // Append a value to the blockchain
-    public void append(String value) {
-
-        // Reset the number of received responses
-        receivedResponses = 0;
-
-        // Create a message and broadcast it to the nodes
-        //ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.APPEND);
-        //clientMessage.setMessage(value);
-        //linkToNodes.broadcast(clientMessage);
-
-        // Client waits for a smallQuorum (f + 1) of RESPONSE messages using the message bucket
-        System.out.println(MessageFormat.format("{0} - Waiting for a quorum of responses for value \"{1}\"", clientConfig.getId(), value));
-        while (true) {
-            // Sleep for a while to avoid busy waiting
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            if (receivedResponses >= smallQuorumSize) {
-                System.out.println(MessageFormat.format("{0} - Received a quorum of responses for value \"{1}\"", clientConfig.getId(), value));
-                System.out.println();
-                System.out.print(">> ");
-                receivedResponses = 0;
-                break;
-            }
-        }
-    }
 
     public void transfer(String nodeId, String destination, Integer amount) {
-        // Reset the number of received responses
-        receivedResponses = 0;
 
         // Create a message and broadcast it to the nodes
         ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.TRANSFER);
@@ -71,25 +47,6 @@ public class ClientLibrary {
         clientMessage.setMessage(transferMessage.toJson());
 
         linkToNodes.broadcast(clientMessage);
-
-        // Client waits for a smallQuorum (f + 1) of RESPONSE messages using the message bucket
-        System.out.println(MessageFormat.format("{0} - Waiting for a quorum of responses for amount \"{1}\"", clientConfig.getId(), amount));
-        while (true) {
-            // Sleep for a while to avoid busy waiting
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            if (receivedResponses >= smallQuorumSize) {
-                System.out.println(MessageFormat.format("{0} - Received a quorum of responses for amount \"{1}\"", clientConfig.getId(), amount));
-                System.out.println();
-                System.out.print(">> ");
-                receivedResponses = 0;
-                break;
-            }
-        }
     }
 
 
@@ -99,6 +56,30 @@ public class ClientLibrary {
     public void check_balance(){
 
     }
+
+    public void uponTransferResponse(ClientMessage message) {
+        TResponseMessage transferResponse = message.deserializeTResponseMessage();
+        Transaction transaction = Transaction.fromJson(transferResponse.getTransaction());
+        int nonce = transaction.getNonce();
+
+        // adds response to the list, and checks how many it has
+        transferResponses.computeIfAbsent(nonce, key -> new ArrayList<>())
+                .add(transferResponse);
+
+        // Prints when its exactly f + 1
+        if (transferResponses.get(nonce).size() == smallQuorumSize) {
+            System.out.println(MessageFormat.format(
+                    "{0} - Transfer finished, from node {1} in position {2}. Transfer with amount {3} to client {4}",
+                    clientConfig.getId(), message.getSenderId(), message.getPosition(),
+                    transaction.getAmount(),
+                    transaction.getReceiver())
+            );
+
+            System.out.println();
+            System.out.print(">> ");
+        }
+    }
+
 
     // Listen for replies from the nodes
     public void listen() {
@@ -116,20 +97,8 @@ public class ClientLibrary {
                                 System.out.println();
                                 System.out.print(">> ");
                                 break;
-                            case RESPONSE:
-                                ClientMessage clientMessage = (ClientMessage) message;
-                                //TransferMessage transferMessage = new Gson().fromJson(clientMessage.getMessage(), TransferMessage.class);
-                                if (receivedResponses < smallQuorumSize) {
-                                    receivedResponses++;
-                                }
-                                System.out.println(MessageFormat.format(
-                                    "{0} - Commit finished from node {1} in position {2}", //for transfer of value {3} to node {4}",
-                                    clientConfig.getId(), clientMessage.getSenderId(), clientMessage.getPosition()
-                                    //transferMessage.getAmount(),
-                                    //transferMessage.getReceiver()));
-                                        ));
-                                System.out.println();
-                                System.out.print(">> ");
+                            case TRANSFER_RESPONSE:
+                                uponTransferResponse((ClientMessage) message);
                                 break;
                             case IGNORE, INVALID:
                                 break;
