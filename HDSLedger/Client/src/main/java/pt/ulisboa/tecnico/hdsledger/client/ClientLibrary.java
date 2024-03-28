@@ -77,7 +77,7 @@ public class ClientLibrary {
         // Prints when its exactly f + 1
         if (transferResponses.get(nonce).size() == smallQuorumSize) {
             System.out.println(MessageFormat.format(
-                    "{0} - Transfer finished, from node {1} in position {2}. Transfer with amount {3} to client {4}",
+                    "{0} - Transfer completed, from node {1} in position {2}. Transfer amount: {3} Transfer recipient: {4}",
                     clientConfig.getId(), message.getSenderId(), transferResponse.getPosition(),
                     transaction.getAmount(),
                     transaction.getReceiver())

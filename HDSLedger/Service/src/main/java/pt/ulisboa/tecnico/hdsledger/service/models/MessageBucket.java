@@ -3,8 +3,6 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.google.gson.Gson;
-
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
@@ -15,7 +13,7 @@ public class MessageBucket {
     private final int quorumSize;
 
     // f + 1 quorum size
-    private final int smallQuorumSize;
+    private final int existsCorrectSet;
 
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
@@ -36,7 +34,7 @@ public class MessageBucket {
     public MessageBucket(int nodeCount) {
         int f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
-        smallQuorumSize = f + 1;
+        existsCorrectSet = f + 1;
     }
 
     /*
@@ -105,7 +103,7 @@ public class MessageBucket {
     }
 
     // TODO - maybe do this in the same function instead of two?
-    public Optional<String> hasValidSmallRoundChangeQuorum(String nodeId, int instance, int round) {
+    public Optional<String> existsCorrectRoundChangeSet(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
@@ -117,7 +115,7 @@ public class MessageBucket {
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
         return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
-            return entry.getValue() >= smallQuorumSize;
+            return entry.getValue() >= existsCorrectSet;
         }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();

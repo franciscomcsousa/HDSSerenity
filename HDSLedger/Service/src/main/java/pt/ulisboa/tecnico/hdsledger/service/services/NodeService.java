@@ -8,8 +8,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.google.gson.Gson;
-
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
@@ -551,16 +549,33 @@ public class NodeService implements UDPService {
                         "{0} - Received ROUND-CHANGE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
-        // verifies if the round change is bigger than the process current round
-        if (instance.getCurrentRound() < round)
+        // Any upon rule can be triggered at most once per round
+        if (instance.getLatestRoundChange() >=  round && instance.getLatestRoundChangeBroadcast() >= round ) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Already performed ROUND-CHANGE for Consensus Instance {1}, Round {2}, ignoring",
+                            config.getId(), consensusInstance, round));
             return;
+        }
 
         roundChangeMessages.addMessage(message);
 
-        // TODO - Verify if it has received f + 1, ROUND_CHANGE messages - not essential but increases liveness
-        // if it has, broadcasts the message to all,
-        // updates the round value
         Optional<String> roundChangeValue;
+        roundChangeValue = roundChangeMessages.existsCorrectRoundChangeSet(config.getId(), consensusInstance, round);
+
+        // Upon rule -> if received a valid set of (f + 1) broadcast ROUND-CHANGE with round rmin
+        // TODO - check if rmin <= rj
+        if(roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+            instance.setLatestRoundChangeBroadcast(round);
+            ConsensusMessage broadcastMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                    .setConsensusInstance(message.getConsensusInstance())
+                    .setRound(message.getRound())
+                    .setMessage(message.getMessage())
+                    .setJustification(message.getJustification())
+                    .build();
+            // Broadcast with self signature and senderId
+            this.link.broadcast(broadcastMessage);
+        }
 
         // Verify if it has received Quorum, ROUND_CHANGE messages
         // if it has, JustifyRoundChange
@@ -570,12 +585,14 @@ public class NodeService implements UDPService {
 
         // TODO - verify if upon rule is only triggered once per round
 
-        // Check if it has received a round change quorum
+        // Upon rule -> Check if it has received a round change quorum
         if (roundChangeValue.isPresent() &&
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
 
             System.out.println("ROUND CHANGE QUORUM RECEIVED");
+
+            instance.setLatestRoundChange(round);
 
             // Update the leader of the consensus
             // (remove the old leader and make the one with the id of the previous leader + 1 the new leader)

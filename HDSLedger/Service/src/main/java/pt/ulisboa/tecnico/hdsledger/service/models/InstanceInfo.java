@@ -11,6 +11,8 @@ public class InstanceInfo {
     private CommitMessage commitMessage;
     private Block inputBlock;
     private int committedRound = -1;
+    private int latestRoundChange = -1;
+    private int latestRoundChangeBroadcast = -1;
 
     public InstanceInfo(Block inputBlock) {
         this.inputBlock = inputBlock;
@@ -64,5 +66,21 @@ public class InstanceInfo {
 
     public void setCommitMessage(CommitMessage commitMessage) {
         this.commitMessage = commitMessage;
+    }
+
+    public int getLatestRoundChange() {
+        return latestRoundChange;
+    }
+
+    public void setLatestRoundChange(int latestRoundChange) {
+        this.latestRoundChange = latestRoundChange;
+    }
+
+    public int getLatestRoundChangeBroadcast() {
+        return latestRoundChangeBroadcast;
+    }
+
+    public void setLatestRoundChangeBroadcast(int latestBroadcastRoundChange) {
+        this.latestRoundChangeBroadcast = latestBroadcastRoundChange;
     }
 }
