@@ -66,7 +66,7 @@ public class Client {
 
                 // Case for each user input
                 switch(splitInput[0]){
-                    case "transfer":
+                    case "transfer": case "t":
                         if (splitInput.length != 3) {
                             System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer.");
                             break;

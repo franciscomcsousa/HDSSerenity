@@ -20,6 +20,19 @@ public class MessageBucket {
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
 
+    public void printBucket() {
+        for (int instance : this.bucket.keySet()) {
+            System.out.println("Instance: " + instance);
+            for (int round : bucket.get(instance).keySet()) {
+                System.out.println("    Round: " + round);
+                for (String senderId : bucket.get(instance).get(round).keySet()) {
+                    System.out.println("        Sender ID: " + senderId);
+                    System.out.println("        Message: " + bucket.get(instance).get(round).get(senderId));
+                }
+            }
+        }
+    }
+
     public MessageBucket(int nodeCount) {
         int f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
@@ -44,7 +57,6 @@ public class MessageBucket {
 
     public Optional<List<ConsensusMessage>> getPrepareMessages(String nodeId, int instance, int round) {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
-            //System.out.println("\noh no!\n");
             return Optional.empty();
         }
 

@@ -21,6 +21,8 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 public class NodeService implements UDPService {
 
+    // For testing purposes
+    private boolean testingBool = false;
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
     // Nodes configurations
     private final ProcessConfig[] nodesConfig;
@@ -320,6 +322,15 @@ public class NodeService implements UDPService {
 
             instance.setCommitMessage(c);
 
+            // TODO - this should be a test - a test where in one and only round round no one is able to commit
+            // this triggers a round change where a prepared value is != null
+            /*if (!testingBool)
+            {
+                testingBool = true;
+                System.out.println("\nI won't commit this round");
+                return;
+            }*/
+
             for (ConsensusMessage senderMessage : sendersMessage) {
                 ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
                         .setConsensusInstance(consensusInstance)
@@ -503,6 +514,7 @@ public class NodeService implements UDPService {
 
         // TODO - verify if upon rule is only triggered once per round
 
+        // Check if it has received a round change quorum
         if (roundChangeValue.isPresent() &&
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
@@ -518,6 +530,7 @@ public class NodeService implements UDPService {
             int currentLeaderId = Integer.parseInt(leaderConfig.getId());
             String newLeaderId;
 
+            // TODO - if leader doesnt crash and round change still gets through, leader gets confused
             if (currentLeaderId + 1 > Arrays.stream(nodesConfig)
                     .filter(processConfig -> Integer.parseInt(processConfig.getId()) < 20)
                     .count())
@@ -601,7 +614,7 @@ public class NodeService implements UDPService {
 
         // Add any Prepare messages as justification
         Optional<List<ConsensusMessage>> justificationMessages =
-                prepareMessages.getPrepareMessages(config.getId(), consensusInstance.get(), round);
+                prepareMessages.getPrepareMessages(config.getId(), consensusInstance.get(), existingConsensus.getPreparedRound());
 
         if (justificationMessages.isPresent()) {
             consensusMessage.setJustification(justificationMessages.get());
