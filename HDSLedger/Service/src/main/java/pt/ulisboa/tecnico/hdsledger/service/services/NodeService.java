@@ -59,9 +59,7 @@ public class NodeService implements UDPService {
     // Consensus instance to which the timer is counting
     private int timerInstance = -1;
 
-    // TODO
-    // Ledger (for now, just a list of strings)
-    private ArrayList<String> ledger = new ArrayList<String>();
+    private ArrayList<Block> ledger = new ArrayList<Block>();
 
     // TODO - maybe make it public for clientService access it
     // Client Balances state
@@ -96,7 +94,7 @@ public class NodeService implements UDPService {
         return this.consensusInstance.get();
     }
 
-    public ArrayList<String> getLedger() {
+    public ArrayList<Block> getLedger() {
         return this.ledger;
     }
 
@@ -137,6 +135,16 @@ public class NodeService implements UDPService {
     public void newTransferRequest(Transaction transaction) {
 
         // TODO - more Transaction verification needed
+
+        // Verifies if client has enough money to do that transaction
+        if (clientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED);
+            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+            clientMessage.setMessage(tResponseMessage.toJson());
+
+            link.send(transaction.getSender(), clientMessage);
+            return;
+        }
 
         // Adds the transaction to the Queue
         transactionRequests.add(transaction);
@@ -425,27 +433,26 @@ public class NodeService implements UDPService {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            // TODO for testing purposes until implementation is finished
-            String value = "TESTE " + consensusInstance;
             //String value = new Gson().toJson(commitBlock.get());
+            Block blockToLedger = Block.fromJson(commitBlock.get());
 
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
 
                 // Increment size of ledger to accommodate current instance
+                // TODO - do not add a block without checking if its sequential
                 ledger.ensureCapacity(consensusInstance);
-                while (ledger.size() < consensusInstance - 1) {
-                    ledger.add("");
-                }
+//                while (ledger.size() < consensusInstance - 1) {
+//                    ledger.add("");
+//                }
                 
-                ledger.add(consensusInstance - 1, value);
+                ledger.add(consensusInstance - 1, blockToLedger);
                 
                 LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Current Ledger: {1}",
-                            config.getId(), String.join("", ledger)));
+                            config.getId(), this.ledger));
             }
-            System.out.println("NEW LEDGER IS: " + ledger);
 
             lastDecidedConsensusInstance.getAndIncrement();
 
@@ -465,12 +472,11 @@ public class NodeService implements UDPService {
             for (Transaction transaction : committedBlock.getTransactions()) {
 
                 String senderId = transaction.getSender();
-                TResponseMessage transferResponse = new TResponseMessage(transaction.toJson(),position);
-
+                TResponseMessage transferResponse = new TResponseMessage(transaction.toJson(), TResponseMessage.Status.SUCCESS);
+                transferResponse.setPosition(position);
 
                 ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
                 clientMessage.setMessage(transferResponse.toJson());
-                clientMessage.setPosition(position);
 
                 // Respond to the client
                 clientLink.send(senderId,clientMessage);

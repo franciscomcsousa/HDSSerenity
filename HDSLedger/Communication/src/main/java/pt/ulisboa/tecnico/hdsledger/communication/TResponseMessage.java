@@ -9,14 +9,24 @@ public class TResponseMessage {
     // Position in the blockchain
     private int position;
 
-    public TResponseMessage(String transaction, int position) {
+    // Message Status
+    private Status status;
+
+    // Status, can be successful or fail
+    public enum Status {
+        SUCCESS, FAILED;
+    }
+
+    public TResponseMessage(String transaction, Status status) {
         this.transaction = transaction;
-        this.position = position;
+        this.status = status;
     }
 
     public String getTransaction() {
         return transaction;
     }
+
+    public Status getStatus() { return status; }
 
     public void setTransaction(String newTransaction) {
         this.transaction = newTransaction;

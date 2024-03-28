@@ -50,13 +50,15 @@ public class ClientService implements UDPService {
         // Creates Transaction
         Transaction newTransaction = new Transaction(transferMessage.getSender(),receiverId,transferMessage.getAmount());
 
-        // TODO - add logic that verifies the validity of the
-        //  transfer before creating transactions and adding to the requests
-        //Map<String, Integer> clientsBalance = nodeService.getClientsBalance();
-        // Verify ReceiverID
-        if(Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
-            // TODO - add response error message
-            //System.out.println(" Detected error in transfer, with receiver");
+        // Verify ReceiverID, does it exist?
+        // TODO - can the client send money to himself?
+        if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
+            TResponseMessage tResponseMessage = new TResponseMessage(newTransaction.toJson(), TResponseMessage.Status.FAILED);
+            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+            clientMessage.setMessage(tResponseMessage.toJson());
+
+            link.send(message.getSenderId(), clientMessage);
+            return;
         }
 
         nodeService.newTransferRequest(newTransaction);

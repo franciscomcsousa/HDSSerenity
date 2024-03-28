@@ -6,12 +6,9 @@ import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.google.gson.Gson;
 
 //
 // Client library used as a bridge between the client and the nodes in the blockchain
@@ -62,6 +59,17 @@ public class ClientLibrary {
         Transaction transaction = Transaction.fromJson(transferResponse.getTransaction());
         int nonce = transaction.getNonce();
 
+        // if transfer fails
+        if (transferResponse.getStatus() == TResponseMessage.Status.FAILED) {
+            System.out.println(MessageFormat.format(
+                    "{0} - Transfer Failed, from node {1}. Transfer with amount {2} to client {3}",
+                    clientConfig.getId(), message.getSenderId(),
+                    transaction.getAmount(),
+                    transaction.getReceiver()));
+            return;
+        }
+
+
         // adds response to the list, and checks how many it has
         transferResponses.computeIfAbsent(nonce, key -> new ArrayList<>())
                 .add(transferResponse);
@@ -70,7 +78,7 @@ public class ClientLibrary {
         if (transferResponses.get(nonce).size() == smallQuorumSize) {
             System.out.println(MessageFormat.format(
                     "{0} - Transfer finished, from node {1} in position {2}. Transfer with amount {3} to client {4}",
-                    clientConfig.getId(), message.getSenderId(), message.getPosition(),
+                    clientConfig.getId(), message.getSenderId(), transferResponse.getPosition(),
                     transaction.getAmount(),
                     transaction.getReceiver())
             );

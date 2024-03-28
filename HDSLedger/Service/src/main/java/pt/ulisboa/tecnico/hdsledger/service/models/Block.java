@@ -1,11 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.util.ArrayList;
 import java.util.List;
-
 import com.google.gson.Gson;
-
-import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
 
 public class Block {
 
