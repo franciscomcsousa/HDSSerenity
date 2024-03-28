@@ -6,8 +6,6 @@ import java.util.*;
 import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
-import pt.ulisboa.tecnico.hdsledger.service.models.Block;
-import pt.ulisboa.tecnico.hdsledger.service.models.Requests;
 import pt.ulisboa.tecnico.hdsledger.service.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -31,21 +29,14 @@ public class ClientService implements UDPService {
     // Node Service
     private NodeService nodeService;
 
-    // Requests queue
-    private final Requests requests;
-
-    // Current Block
-    private List<Transaction> transactionList = new ArrayList<>();
-
     public ClientService(Link link, ProcessConfig config,
-                       ProcessConfig[] nodesConfigs, ProcessConfig[] clientConfigs, NodeService nodeService, Requests requests) {
+                       ProcessConfig[] nodesConfigs, ProcessConfig[] clientConfigs, NodeService nodeService) {
 
         this.link = link;
         this.config = config;
         this.clientConfigs = clientConfigs;
         this.nodesConfigs = nodesConfigs;
         this.nodeService = nodeService;
-        this.requests = requests;
     }
 
     public ProcessConfig getConfig() {
@@ -53,12 +44,14 @@ public class ClientService implements UDPService {
     }
 
     private void receivedTransfer(ClientMessage message) {
-        // TODO - add logic that verifies the validity of the
-        //  transfer before creating transactions and adding to the requests
-        Block block = new Block();
         TransferMessage transferMessage = message.deserializeTransferMessage();
         String receiverId = transferMessage.getReceiver();
 
+        // Creates Transaction
+        Transaction newTransaction = new Transaction(transferMessage.getSender(),receiverId,transferMessage.getAmount());
+
+        // TODO - add logic that verifies the validity of the
+        //  transfer before creating transactions and adding to the requests
         //Map<String, Integer> clientsBalance = nodeService.getClientsBalance();
         // Verify ReceiverID
         if(Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
@@ -66,18 +59,8 @@ public class ClientService implements UDPService {
             //System.out.println(" Detected error in transfer, with receiver");
         }
 
-        // Add the request to the queue
-        requests.addRequest(message);
+        nodeService.newTransferRequest(newTransaction);
 
-        // Create Transaction and add to the transactionList
-        transactionList.add(requests.createTransaction());
-
-        if (transactionList.size() == block.getMaxBlockSize()) {
-            // Creates block and starts consensus
-            block.setTransactions(transactionList);
-            nodeService.startConsensus(block);
-            transactionList.clear();
-        }
     }
 
     @Override

@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 
@@ -52,9 +53,6 @@ public class NodeService implements UDPService {
     // Timer to trigger round changes
     private Timer timerConsensus;
 
-    // Requests queue
-    private final Requests requests;
-
     // Consensus should take max timerMilliseconds
     private final int timerMillis = 5000;
     
@@ -69,15 +67,17 @@ public class NodeService implements UDPService {
     // Client Balances state
     private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
 
+    // Transfer Requests Queue
+    private final List<Transaction> transactionRequests = new LinkedList<>();
+
     public NodeService(Link link, Link clientLink, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs, Requests requests) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs) {
 
         this.link = link;
         this.clientLink = clientLink;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
-        this.requests = requests;
 
         //Only count nodes that are not clients
         this.prepareMessages = new MessageBucket(nodesConfig.length);
@@ -117,17 +117,52 @@ public class NodeService implements UDPService {
         return consensusMessage;
     }
 
-    /*
-     * Start an instance of consensus for a value
+    public Block createBlock (String nodeId) {
+        Block newBlock = new Block();
+
+        // Add to block the first n elements of transactionRequests
+        // Does not delete the elements
+        newBlock.setTransactions(transactionRequests.stream().limit(newBlock.getMaxBlockSize()).collect(Collectors.toList()));
+        newBlock.setNodeId(nodeId);
+        return newBlock;
+    }
+
+    /**
+     * Adds new Transaction to the Requests
+     * Verifies if there are enough Transactions to create a block
+     * If a block can be created, start a consensus
+     *
+     * @param transaction New Transaction added to the Queue
+     */
+    public void newTransferRequest(Transaction transaction) {
+
+        // TODO - more Transaction verification needed
+
+        // Adds the transaction to the Queue
+        transactionRequests.add(transaction);
+        Block newBlock = new Block();
+
+        // if there are enough Transactions for a block startConsensus
+        if (transactionRequests.size() == newBlock.getMaxBlockSize()) {
+            startConsensus();
+        }
+
+    }
+
+
+    /**
+     * Start an instance of consensus for a new block
      * Only the current leader will start a consensus instance
      * the remaining nodes only update values.
      *
-     * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(Block block) {
+    public void startConsensus() {
+
+        // Create a new Block
+        Block block = createBlock(this.config.getId());
+
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        // TODO - future problem i feel
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(block));
 
         // If startConsensus was already called for a given round
@@ -441,6 +476,8 @@ public class NodeService implements UDPService {
                 clientLink.send(senderId,clientMessage);
             }
 
+            // removes the transactions committed from the transactionsRequest
+            transactionRequests.subList(0, committedBlock.getMaxBlockSize()).clear();
             
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired

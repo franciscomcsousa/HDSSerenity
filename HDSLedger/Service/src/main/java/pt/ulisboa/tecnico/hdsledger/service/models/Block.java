@@ -13,9 +13,8 @@ public class Block {
 
     private int maxBlockSize = 2;
 
-    // TODO
     // Node who created
-    private int nodeId;
+    private String nodeId;
 
     public Block() {
 
@@ -30,6 +29,10 @@ public class Block {
     public List<Transaction> getTransactions() { return transactions; }
 
     public void setTransactions(List<Transaction> transactions) { this.transactions = transactions; }
+
+    public void addTransaction(Transaction transaction) { this.transactions.add(transaction); }
+
+    public void setNodeId (String nodeId) { this.nodeId = nodeId; }
 
 
     // TODO - change to only sign the block stuff
