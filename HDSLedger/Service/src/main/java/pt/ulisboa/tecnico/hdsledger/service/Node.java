@@ -62,7 +62,7 @@ public class Node {
             ProcessConfig[] clientConfigs = new ProcessConfigBuilder().fromFile(clientConfigPath);
 
             // MULTIPLE LEADERS BYZANTINE TEST
-            if(nodeConfig.getBehavior() == ProcessConfig.Behavior.MULT_LEADERS){
+            if (nodeConfig.getBehavior() == ProcessConfig.Behavior.MULT_LEADERS){
                 Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).forEach(c -> c.setLeader(false));
                 nodeConfig.setLeader(true);
             }
@@ -77,7 +77,7 @@ public class Node {
             clientService = new ClientService(linkToClients, nodeConfig, nodeConfigs, clientConfigs, nodeService);
 
             // FAULTY LEADER BYZANTINE TEST
-            if(nodeConfig.isLeader() && nodeConfig.getBehavior() == ProcessConfig.Behavior.FAULTY){
+            if (nodeConfig.isLeader() && nodeConfig.getBehavior() == ProcessConfig.Behavior.FAULTY){
                 System.out.println("FAULTY LEADER BYZANTINE TEST");
                 return;
             }

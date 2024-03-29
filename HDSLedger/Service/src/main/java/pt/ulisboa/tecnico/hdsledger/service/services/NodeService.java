@@ -17,8 +17,6 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 public class NodeService implements UDPService {
 
-    // For testing purposes
-    private boolean testingBool = false;
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
     // Nodes configurations
     private final ProcessConfig[] nodesConfig;
@@ -202,10 +200,18 @@ public class NodeService implements UDPService {
             }
         }
 
-        // TODO FIX DIFF VALUE BYZANTINE TEST
-        //if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
-        //    message.setMessage("DIFFERENT VALUE");
-        //}
+        // DIFF VALUE BYZANTINE TEST
+        if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
+            block = new Block();
+
+            // Add to block different made up transactions
+            for (int i = 0; i < block.getMaxBlockSize(); i++) {
+                Transaction transaction = new Transaction("20", "21", 100);
+                block.addTransaction(transaction);
+            }
+
+            block.setNodeId(this.config.getId());
+        }
 
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
@@ -272,13 +278,20 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round));
         }
 
-        // TODO - change to be block instead of string
         PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getBlock());
 
-        // TODO FIX DIFFERENT PREPARE VALUE BYZANTINE TEST
-        //if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
-        //    prepareMessage = new PrepareMessage("DIFFERENT VALUE");
-        //}
+        // DIFFERENT PREPARE VALUE BYZANTINE TEST
+        if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
+            // Create a prepare message with a different block
+            Block differentBlock = new Block();
+
+            for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
+                Transaction transaction = new Transaction("20", "21", 100);
+                differentBlock.addTransaction(transaction);
+            }
+
+            prepareMessage = new PrepareMessage(differentBlock.toJson());
+        }
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
@@ -367,21 +380,28 @@ public class NodeService implements UDPService {
 
             CommitMessage c = new CommitMessage(preparedBlock.get());
 
-            // TODO FIX DIFFERENT COMMIT VALUE BYZANTINE TEST
-            //if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
-            //    c = new CommitMessage("DIFFERENT VALUE");
-            //}
+            // DIFFERENT COMMIT VALUE BYZANTINE TEST
+            if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
+                // Create a commit message with a different block
+                Block differentBlock = new Block();
+
+                for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
+                    Transaction transaction = new Transaction("20", "21", 100);
+                    differentBlock.addTransaction(transaction);
+                }
+
+                c = new CommitMessage(differentBlock.toJson());
+            }
 
             instance.setCommitMessage(c);
 
-            // TODO - this should be a test - a test where in one and only round round no one is able to commit
-            // this triggers a round change where a prepared value is != null
-            /*if (!testingBool)
-            {
-                testingBool = true;
-                System.out.println("\nI won't commit this round");
-                return;
-            }*/
+            // NO COMMIT BYZANTINE TEST
+            if (config.getBehavior() == ProcessConfig.Behavior.NO_COMMIT) {
+                // Return without sending commit messages only for the first round
+                if (round == 1) {
+                    return;
+                }
+            }
 
             for (ConsensusMessage senderMessage : sendersMessage) {
                 ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
@@ -396,8 +416,6 @@ public class NodeService implements UDPService {
             }
         }
     }
-
-
 
     /*
      * Handle commit messages and decide if there is a valid quorum

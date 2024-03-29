@@ -21,7 +21,8 @@ public class ProcessConfig {
         DIFF_VALUE("DIFF_VALUE"),
         MULT_LEADERS("MULT_LEADERS"),
         PREPARE_VALUE("PREPARE_VALUE"),
-        COMMIT_VALUE("COMMIT_VALUE");
+        COMMIT_VALUE("COMMIT_VALUE"),
+        NO_COMMIT("NO_COMMIT"),;
 
         String behavior;
 

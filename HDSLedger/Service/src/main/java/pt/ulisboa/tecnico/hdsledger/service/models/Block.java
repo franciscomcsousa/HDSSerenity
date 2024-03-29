@@ -1,11 +1,12 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
+import java.util.LinkedList;
 import java.util.List;
 import com.google.gson.Gson;
 
 public class Block {
 
-    private List<Transaction> transactions;
+    private List<Transaction> transactions = new LinkedList<Transaction>();
 
     private int maxBlockSize = 2;
 

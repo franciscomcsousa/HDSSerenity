@@ -17,6 +17,7 @@ server_configs = [
     "multiple_leaders",
     "prepare_value",
     "commit_value",
+    "no_commit",
 ]
 
 # Client node configuration file name
