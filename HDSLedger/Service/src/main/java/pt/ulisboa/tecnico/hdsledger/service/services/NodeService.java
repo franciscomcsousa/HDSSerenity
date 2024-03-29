@@ -174,19 +174,16 @@ public class NodeService implements UDPService {
 
 
     /**
-     * Start an instance of consensus for a new block
+     * Start an instance of consensus for a new block or preparedBlock
      * Only the current leader will start a consensus instance
-     * the remaining nodes only update values.
+     * the remaining nodes only update timers.
      *
      */
     public void startConsensus() throws Exception {
-
-        // Create a new Block
-        Block block = createBlock(this.config.getId());
-
+        
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(block));
+        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo());
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
@@ -205,34 +202,40 @@ public class NodeService implements UDPService {
             }
         }
 
-        // DIFF VALUE BYZANTINE TEST
-        if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
-            /** Attacker model:
-             *  Has full knowledge of the code
-             *  Doesn't have access to other's private keys
-             *
-             *  Here attacker is the leader and tries to insert made up transactions on a block
-             */
-            block = new Block();
-            Random random = new Random();
-
-            // Add to block different made up transactions
-            for (int i = 0; i < block.getMaxBlockSize(); i++) {
-                int randomInt = random.nextInt();
-                String signable = "20" + "21" + "100" + randomInt;
-                Transaction transaction = new Transaction(
-                        "20",
-                        "21",
-                        100,
-                        randomInt,
-                        RSASignature.sign(signable, "1"));
-                block.addTransaction(transaction);
-            }
-            block.setNodeId(this.config.getId());
-        }
-
-        // Leader broadcasts PRE-PREPARE message
+        // Leader creates new Block, or uses the preparedBlock
+        // then broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
+
+            // Create a new Block
+            Block block = createBlock(this.config.getId());
+
+            // DIFF VALUE BYZANTINE TEST
+            if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
+                /** Attacker model:
+                 *  Has full knowledge of the code
+                 *  Doesn't have access to other's private keys
+                 *
+                 *  Here attacker is the leader and tries to insert made up transactions on a block
+                 */
+                block = new Block();
+                Random random = new Random();
+
+                // Add to block different made up transactions
+                for (int i = 0; i < block.getMaxBlockSize(); i++) {
+                    int randomInt = random.nextInt();
+                    String signable = "20" + "21" + "100" + randomInt;
+                    Transaction transaction = new Transaction(
+                            "20",
+                            "21",
+                            100,
+                            randomInt,
+                            RSASignature.sign(signable, "1"));
+                    block.addTransaction(transaction);
+                }
+                block.setNodeId(this.config.getId());
+            }
+
+
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
@@ -240,7 +243,8 @@ public class NodeService implements UDPService {
             ConsensusMessage m = this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound());
             this.link.broadcast(m);
 
-        } else {
+        }
+        else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
@@ -290,7 +294,7 @@ public class NodeService implements UDPService {
             return;
 
         // Set instance value
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(block));
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo());
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -372,7 +376,7 @@ public class NodeService implements UDPService {
 
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
-        Block block = Block.fromJson(prepareMessage.getBlock());
+        //Block block = Block.fromJson(prepareMessage.getBlock());
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -383,7 +387,7 @@ public class NodeService implements UDPService {
         prepareMessages.addMessage(message);
 
         // Set instance values
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(block));
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo());
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
@@ -710,7 +714,7 @@ public class NodeService implements UDPService {
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
 
-            System.out.println("\nROUND CHANGE QUORUM RECEIVED");
+            System.out.println("\n\nROUND CHANGE QUORUM RECEIVED");
 
             instance.setLatestRoundChange(round);
 
@@ -741,11 +745,13 @@ public class NodeService implements UDPService {
 
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
-            // otherwise the value is the one passed as input to this instance
+            // otherwise the value is to be created in the startConsensus function
+            // TODO change, to only call startConsensus even when there is a preparedBlock
             if (config.isLeader()) {
                 Block value = instance.getPreparedBlock();
                 if (value == null) {
-                    value = instance.getInputBlock();
+                    // creates new block
+                    value = createBlock(config.getId());
                 }
                 // Start a new consensus by broadcasting a PRE-PREPARE message
                 LOGGER.log(Level.INFO,
@@ -792,7 +798,6 @@ public class NodeService implements UDPService {
         this.instanceInfo.put(timerInstance, existingConsensus);
 
         // just to be clearer to read
-        String value = existingConsensus.getInputBlock().toJson();
         int round = existingConsensus.getCurrentRound();
 
         LOGGER.log(Level.INFO,
