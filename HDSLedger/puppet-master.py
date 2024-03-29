@@ -34,6 +34,11 @@ if len(sys.argv) == 3:
     if server_config not in server_configs or client_config not in client_configs:
         server_config = server_configs[0]
         client_config = client_configs[1]
+elif len(sys.argv) == 2:
+    server_config = sys.argv[1]
+    client_config = client_configs[1]
+    if server_config not in server_configs:
+        server_config = server_configs[0]
 else:
     server_config = server_configs[0]
     client_config = client_configs[1]

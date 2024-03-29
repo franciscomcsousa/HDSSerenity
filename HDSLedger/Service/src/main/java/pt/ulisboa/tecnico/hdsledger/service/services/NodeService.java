@@ -6,7 +6,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
@@ -213,22 +212,7 @@ public class NodeService implements UDPService {
              *
              *  Here attacker is the leader and tries to insert made up transactions on a block
              */
-            block = new Block();
-            Random random = new Random();
-
-            // Add to block different made up transactions
-            for (int i = 0; i < block.getMaxBlockSize(); i++) {
-                int randomInt = random.nextInt();
-                String signable = "20" + "21" + "100" + randomInt;
-                Transaction transaction = new Transaction(
-                        "20",
-                        "21",
-                        100,
-                        randomInt,
-                        RSASignature.sign(signable, "1"));
-                block.addTransaction(transaction);
-            }
-            block.setNodeId(this.config.getId());
+            block = Tests.createNewBlock(config.getId());
         }
 
         // Leader broadcasts PRE-PREPARE message
@@ -318,22 +302,10 @@ public class NodeService implements UDPService {
             /** Attacker model:
              *  Has full knowledge of the code
              *  Doesn't have access to other's private keys
+             * 
+             *  Here a node creates a prepare message with a different block
              */
-            // Create a prepare message with a different block
-            Block differentBlock = new Block();
-            Random random = new Random();
-
-            for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
-                int randomInt = random.nextInt();
-                String signable = "20" + "21" + "100" + randomInt;
-                Transaction transaction = new Transaction(
-                        "20",
-                        "21",
-                        100,
-                        randomInt,
-                        RSASignature.sign(signable, "1"));
-                differentBlock.addTransaction(transaction);
-            }
+            Block differentBlock = Tests.createNewBlock(config.getId());
             prepareMessage = new PrepareMessage(differentBlock.toJson());
         }
 
@@ -429,23 +401,10 @@ public class NodeService implements UDPService {
                 /** Attacker model:
                  *  Has full knowledge of the code
                  *  Doesn't have access to other's private keys
+                 * 
+                 * Here a node creates a commit message with a different block
                  */
-                // Create a commit message with a different block
-                Block differentBlock = new Block();
-
-                for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
-                    Random random = new Random();
-                    int randomInt = random.nextInt();
-                    String signable = "20" + "21" + "100" + randomInt;
-                    Transaction transaction = new Transaction(
-                            "20",
-                            "21",
-                            100,
-                            randomInt,
-                            RSASignature.sign(signable, "1"));
-                    differentBlock.addTransaction(transaction);
-                }
-
+                Block differentBlock = Tests.createNewBlock(config.getId());
                 c = new CommitMessage(differentBlock.toJson());
             }
 
@@ -453,7 +412,7 @@ public class NodeService implements UDPService {
 
             // NO COMMIT BYZANTINE TEST
             if (config.getBehavior() == ProcessConfig.Behavior.NO_COMMIT) {
-                // Return without sending commit messages only for the first round
+                // Here all nodes return without sending commit messages only for the first round
                 if (round == 1) {
                     return;
                 }
