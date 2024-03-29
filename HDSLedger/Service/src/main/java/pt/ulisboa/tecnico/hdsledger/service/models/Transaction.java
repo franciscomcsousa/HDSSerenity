@@ -6,17 +6,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 public class Transaction {
-    private String sender;
-    private String receiver;
-    private int amount;
-    private int nonce;
-    private byte[] signature;
+    private final String sender;
+    private final String receiver;
+    private final int amount;
+    private final int nonce;
+    private final byte[] signature;
 
-    public Transaction(String sender, String receiver, Integer amount, Integer nonce){
+    public Transaction(String sender, String receiver, Integer amount, Integer nonce, byte[] signature){
         this.sender = sender;
         this.receiver = receiver;
         this.amount = amount;
         this.nonce = nonce;
+        this.signature = signature;
     }
 
     public int getAmount() {

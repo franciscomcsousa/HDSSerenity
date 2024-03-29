@@ -11,3 +11,7 @@ Ate agora passamos nos seguintes testes:
 - Node byzantino que altera o bloco de transaçoes que manda no commit
 - Round change com valores prepared (quando os nodes nao dao commit, por exemplo)
 - Cliente byzantino que tenta dar forge de uma transferencia
+
+# Attacks
+- Replay attack - protected against using nonces
+- Non repudiation - using signatures

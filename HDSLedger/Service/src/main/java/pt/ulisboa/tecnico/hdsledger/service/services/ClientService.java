@@ -39,15 +39,16 @@ public class ClientService implements UDPService {
         this.nodeService = nodeService;
     }
 
-    private void receivedTransfer(ClientMessage message) {
+    private void receivedTransfer(ClientMessage message) throws Exception {
         TransferMessage transferMessage = message.deserializeTransferMessage();
         String receiverId = transferMessage.getReceiver();
         String senderId = transferMessage.getSender();
         Integer amount = transferMessage.getAmount();
         Integer nonce = transferMessage.getNonce();
+        byte[] signature = transferMessage.getSignature();
 
         // Creates Transaction
-        Transaction newTransaction = new Transaction(senderId,receiverId,amount,nonce);
+        Transaction newTransaction = new Transaction(senderId, receiverId, amount, nonce, signature);
 
         // Verify ReceiverID, does it exist?
         if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
@@ -102,7 +103,11 @@ public class ClientService implements UDPService {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received TRANSFER message from {1}",
                                             config.getId(), message.getSenderId()));
 
-                                    receivedTransfer((ClientMessage) message);
+                                    try {
+                                        receivedTransfer((ClientMessage) message);
+                                    } catch (Exception e) {
+                                        throw new RuntimeException(e);
+                                    }
                                 }
 
                                 case BALANCE ->

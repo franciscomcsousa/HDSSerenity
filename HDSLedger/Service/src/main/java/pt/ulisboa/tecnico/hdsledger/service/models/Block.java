@@ -6,6 +6,8 @@ import com.google.gson.Gson;
 
 public class Block {
 
+    // TODO - add block creator
+    // TODO - add special transaction, fixed value sent to block creator
     private List<Transaction> transactions = new LinkedList<Transaction>();
 
     private int maxBlockSize = 2;

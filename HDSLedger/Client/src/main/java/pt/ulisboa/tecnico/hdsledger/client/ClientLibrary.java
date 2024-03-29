@@ -39,17 +39,8 @@ public class ClientLibrary {
         this.smallQuorumSize = f + 1;
     }
 
-    public int createNonce() {
-        try {
-            return SecureRandom.getInstance("SHA1PRNG").nextInt();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
     // Transfer amount from the client to the destination
-    public void transfer(String nodeId, String destination, Integer amount) {
+    public void transfer(String nodeId, String destination, Integer amount) throws Exception {
         // Check if amount is positive
         if (amount <= 0) {
             System.out.println("Amount must be positive");
@@ -60,7 +51,7 @@ public class ClientLibrary {
 
         // Create a message and broadcast it to the nodes
         ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.TRANSFER);
-        TransferMessage transferMessage = new TransferMessage(nodeId, destination, amount, createNonce());
+        TransferMessage transferMessage = new TransferMessage(nodeId, destination, amount);
         clientMessage.setMessage(transferMessage.toJson());
 
         linkToNodes.broadcast(clientMessage);

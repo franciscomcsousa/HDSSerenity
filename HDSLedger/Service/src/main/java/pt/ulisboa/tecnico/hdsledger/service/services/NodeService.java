@@ -141,7 +141,7 @@ public class NodeService implements UDPService {
      *
      * @param transaction New Transaction added to the Queue
      */
-    public void newTransferRequest(Transaction transaction) {
+    public void newTransferRequest(Transaction transaction) throws Exception {
 
         // TODO - more Transaction verification needed
 
@@ -179,7 +179,7 @@ public class NodeService implements UDPService {
      * the remaining nodes only update values.
      *
      */
-    public void startConsensus() {
+    public void startConsensus() throws Exception {
 
         // Create a new Block
         Block block = createBlock(this.config.getId());
@@ -207,14 +207,27 @@ public class NodeService implements UDPService {
 
         // DIFF VALUE BYZANTINE TEST
         if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
+            /** Attacker model:
+             *  Has full knowledge of the code
+             *  Doesn't have access to other's private keys
+             *
+             *  Here attacker is the leader and tries to insert made up transactions on a block
+             */
             block = new Block();
+            Random random = new Random();
 
             // Add to block different made up transactions
             for (int i = 0; i < block.getMaxBlockSize(); i++) {
-                Transaction transaction = new Transaction("20", "21", 100, -1);
+                int randomInt = random.nextInt();
+                String signable = "20" + "21" + "100" + randomInt;
+                Transaction transaction = new Transaction(
+                        "20",
+                        "21",
+                        100,
+                        randomInt,
+                        RSASignature.sign(signable, "1"));
                 block.addTransaction(transaction);
             }
-
             block.setNodeId(this.config.getId());
         }
 
@@ -302,14 +315,25 @@ public class NodeService implements UDPService {
 
         // DIFFERENT PREPARE VALUE BYZANTINE TEST
         if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
+            /** Attacker model:
+             *  Has full knowledge of the code
+             *  Doesn't have access to other's private keys
+             */
             // Create a prepare message with a different block
             Block differentBlock = new Block();
+            Random random = new Random();
 
             for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
-                Transaction transaction = new Transaction("20", "21", 100, -1);
+                int randomInt = random.nextInt();
+                String signable = "20" + "21" + "100" + randomInt;
+                Transaction transaction = new Transaction(
+                        "20",
+                        "21",
+                        100,
+                        randomInt,
+                        RSASignature.sign(signable, "1"));
                 differentBlock.addTransaction(transaction);
             }
-
             prepareMessage = new PrepareMessage(differentBlock.toJson());
         }
 
@@ -402,11 +426,23 @@ public class NodeService implements UDPService {
 
             // DIFFERENT COMMIT VALUE BYZANTINE TEST
             if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
+                /** Attacker model:
+                 *  Has full knowledge of the code
+                 *  Doesn't have access to other's private keys
+                 */
                 // Create a commit message with a different block
                 Block differentBlock = new Block();
 
                 for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
-                    Transaction transaction = new Transaction("20", "21", 100, -1);
+                    Random random = new Random();
+                    int randomInt = random.nextInt();
+                    String signable = "20" + "21" + "100" + randomInt;
+                    Transaction transaction = new Transaction(
+                            "20",
+                            "21",
+                            100,
+                            randomInt,
+                            RSASignature.sign(signable, "1"));
                     differentBlock.addTransaction(transaction);
                 }
 
@@ -496,11 +532,26 @@ public class NodeService implements UDPService {
 //                }
                 
                 ledger.add(consensusInstance - 1, blockToLedger);
-                
+
+                // Debug convinience
+                StringBuilder ledgerInfo = new StringBuilder();
+                int blockCounter = 1;
+                ledgerInfo.append("\n");
+                for (Block block : ledger) {
+                    ledgerInfo.append("Block: ").append(blockCounter).append("\n");
+                    for (Transaction transaction : block.getTransactions()) {
+                        ledgerInfo
+                                .append("     ")
+                                .append("Sender: ").append(transaction.getSender())
+                                .append(" Receiver: ").append(transaction.getReceiver())
+                                .append(" Value: ").append(transaction.getAmount())
+                                .append("\n");
+                    }
+                }
                 LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Current Ledger: {1}",
-                            config.getId(), this.ledger));
+                            config.getId(), ledgerInfo));
             }
 
             lastDecidedConsensusInstance.getAndIncrement();
