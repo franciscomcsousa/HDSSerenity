@@ -245,7 +245,7 @@ public class NodeService implements UDPService {
      *
      * @param message Message to be handled
      */
-    public void uponPrePrepare(ConsensusMessage message) {
+    public void uponPrePrepare(ConsensusMessage message) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -277,6 +277,14 @@ public class NodeService implements UDPService {
                             "{0} - Already received PRE-PREPARE message for Consensus Instance {1}, Round {2}, "
                                     + "replying again to make sure it reaches the initial sender",
                             config.getId(), consensusInstance, round));
+        }
+
+        if (!justifyPrePrepare(config.getId(), consensusInstance, round, message.getJustification())) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received UNJUSTIFIED PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}, ignoring",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
         }
 
         PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getBlock());
@@ -529,7 +537,6 @@ public class NodeService implements UDPService {
      * Check if a PrePrepare is justified
      *
      */
-    // TODO - use this
     public boolean justifyPrePrepare(String nodeId, int instance, int round, List<ConsensusMessage> justification) throws Exception {
         return round == 1 || this.justifyRoundChange(nodeId, instance, round, justification);
     }
@@ -595,7 +602,7 @@ public class NodeService implements UDPService {
                         config.getId(), senderId, consensusInstance, round));
 
         roundChangeMessages.addMessage(message);
-        Optional<String> roundChangeValue;
+        Optional<String> roundChangeQuorum;
 
         // Any upon rule can be triggered at most once per round
         if (instance.getLatestRoundChangeBroadcast() >= round ) {
@@ -605,11 +612,11 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round));
         }
         else {
-            roundChangeValue = roundChangeMessages.existsCorrectRoundChangeSet(config.getId(), consensusInstance, round);
+            roundChangeQuorum = roundChangeMessages.existsCorrectRoundChangeSet(config.getId(), consensusInstance, round);
 
             // Upon rule -> if received a valid set of (f + 1) broadcast ROUND-CHANGE with round rmin
             // TODO - check if rmin <= rj
-            if(roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+            if(roundChangeQuorum.isPresent() && instance.getPreparedRound() < round) {
                 instance.setLatestRoundChangeBroadcast(round);
                 ConsensusMessage broadcastMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
                         .setConsensusInstance(message.getConsensusInstance())
@@ -632,12 +639,12 @@ public class NodeService implements UDPService {
 
         // Verify if it has received Quorum, ROUND_CHANGE messages
         // if it has, JustifyRoundChange
-        roundChangeValue = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
 
         List<ConsensusMessage> receivedJustification = message.getJustification();
 
         // Upon rule -> Check if it has received a round change quorum
-        if (roundChangeValue.isPresent() &&
+        if (roundChangeQuorum.isPresent() &&
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
 
@@ -682,9 +689,11 @@ public class NodeService implements UDPService {
                 LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
 
-                ConsensusMessage m = this.createConsensusMessage(value, consensusInstance, instance.getCurrentRound());
+                // Create PrePrepare message to broadcast
+                ConsensusMessage prePrepareMessage = this.createConsensusMessage(value, consensusInstance, instance.getCurrentRound());
+                prePrepareMessage.setJustification(receivedJustification);
 
-                this.link.broadcast(m);
+                this.link.broadcast(prePrepareMessage);
             }
             else {
                 LOGGER.log(Level.INFO,
