@@ -67,6 +67,9 @@ public class NodeService implements UDPService {
     // Transfer Requests Queue
     private final List<String> transactionRequests = new LinkedList<>();
 
+    // Transactions nonce's that have been committed
+    private final List<Integer> completedTransfers = new LinkedList<>();
+
     public NodeService(Link link, Link clientLink, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs) {
 
@@ -164,6 +167,19 @@ public class NodeService implements UDPService {
     public void newTransferRequest(Transaction transaction) throws Exception {
 
         // TODO - more Transaction verification needed
+
+        // Stops attacks, through replayability
+        if (completedTransfers.contains(transaction.getNonce())) {
+            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
+            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_REPEATED);
+            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+            clientMessage.setMessage(tResponseMessage.toJson());
+
+            clientLink.send(transaction.getSender(), clientMessage);
+            return;
+        }
+
+
 
         // Verifies if client has enough money to do that transaction
         if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() || 
@@ -583,6 +599,9 @@ public class NodeService implements UDPService {
 
                 // removes the transactions committed from the transactionsRequest
                 transactionRequests.remove(transaction.toJson());
+
+                // adds transaction nonce to the list of completed
+                completedTransfers.add(transaction.getNonce());
             }
 
             // Cancels the timer of the consensus when a quorum of commits
