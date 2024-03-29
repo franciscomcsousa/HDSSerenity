@@ -208,17 +208,16 @@ public class NodeService implements UDPService {
             // Create a new Block
             Block block = createBlock(this.config.getId());
 
-        // DIFF VALUE BYZANTINE TEST
-        if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
-            /** Attacker model:
-             *  Has full knowledge of the code
-             *  Doesn't have access to other's private keys
-             *
-             *  Here attacker is the leader and tries to insert made up transactions on a block
-             */
-            block = Tests.createNewBlock(config.getId());
-        }
-
+            // DIFF VALUE BYZANTINE TEST
+            if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
+                /** Attacker model:
+                 *  Has full knowledge of the code
+                 *  Doesn't have access to other's private keys
+                 *
+                 *  Here attacker is the leader and tries to insert made up transactions on a block
+                 */
+                block = Tests.createNewBlock(config.getId());
+            }
 
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
@@ -232,6 +231,7 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
+
         // Set the timer of a new consensus for the leader
         // and a call for the RoundTimer class
         if (timerConsensus != null) {
