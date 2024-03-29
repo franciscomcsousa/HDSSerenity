@@ -14,6 +14,7 @@ import pt.ulisboa.tecnico.hdsledger.service.Node;
 import pt.ulisboa.tecnico.hdsledger.service.models.*;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
 
 public class NodeService implements UDPService {
 
@@ -529,7 +530,7 @@ public class NodeService implements UDPService {
      *
      */
     // TODO - use this
-    public boolean justifyPrePrepare(String nodeId, int instance, int round, List<ConsensusMessage> justification){
+    public boolean justifyPrePrepare(String nodeId, int instance, int round, List<ConsensusMessage> justification) throws Exception {
         return round == 1 || this.justifyRoundChange(nodeId, instance, round, justification);
     }
 
@@ -537,7 +538,7 @@ public class NodeService implements UDPService {
     * Check if a Round Change is justified
     *
      */
-    public boolean justifyRoundChange(String nodeId, int instance, int round, List<ConsensusMessage> justificationList){
+    public boolean justifyRoundChange(String nodeId, int instance, int round, List<ConsensusMessage> justificationList) throws Exception {
         // If for all round changes messages, none have prepared a value, round change is justified
         if (roundChangeMessages.nonePreparedJustification(instance, round)) {
             return true;
@@ -546,8 +547,20 @@ public class NodeService implements UDPService {
         // Justification messages is the set of the received Prepared messages
         // piggybacked to the Round-Change message
         MessageBucket justificationMessages = new MessageBucket(nodesConfig.length);
+        byte[] signature = null;
         for (ConsensusMessage message : justificationList) {
-            justificationMessages.addMessage(message);
+            signature = message.getSignature();
+            // Check signature validity for each justification message
+            if (RSASignature.verifySign(message.getSignable(), signature, message.getSenderId())){
+                justificationMessages.addMessage(message);
+            }
+            else {
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format(
+                                "{0} - Invalid signature in justification for Instance {1}, Round {2}, ignoring",
+                                config.getId(), consensusInstance, round));
+                return false;
+            }
         }
 
         Optional<String> prepareQuorumValue = Optional.empty();
@@ -559,8 +572,6 @@ public class NodeService implements UDPService {
                     instance,
                     highestRoundChangeMessage.get().getPreparedRound());
 
-        // TODO - Check signatures of the messages
-
         return prepareQuorumValue.isPresent() &&
                 prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
     }
@@ -569,7 +580,7 @@ public class NodeService implements UDPService {
      * Handle roundChange messages and decide if there is a valid quorum
      * @param message ConsensusMessage to be handled
      */
-    public synchronized void uponRoundChange(ConsensusMessage message) {
+    public synchronized void uponRoundChange(ConsensusMessage message) throws Exception {
 
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -583,32 +594,40 @@ public class NodeService implements UDPService {
                         "{0} - Received ROUND-CHANGE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
+        roundChangeMessages.addMessage(message);
+        Optional<String> roundChangeValue;
+
         // Any upon rule can be triggered at most once per round
-        if (instance.getLatestRoundChange() >=  round && instance.getLatestRoundChangeBroadcast() >= round ) {
+        if (instance.getLatestRoundChangeBroadcast() >= round ) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
-                            "{0} - Already performed ROUND-CHANGE for Consensus Instance {1}, Round {2}, ignoring",
+                            "{0} - Already broadcast ROUND-CHANGE for Consensus Instance {1}, Round {2}, won't do it again",
                             config.getId(), consensusInstance, round));
-            return;
+        }
+        else {
+            roundChangeValue = roundChangeMessages.existsCorrectRoundChangeSet(config.getId(), consensusInstance, round);
+
+            // Upon rule -> if received a valid set of (f + 1) broadcast ROUND-CHANGE with round rmin
+            // TODO - check if rmin <= rj
+            if(roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
+                instance.setLatestRoundChangeBroadcast(round);
+                ConsensusMessage broadcastMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                        .setConsensusInstance(message.getConsensusInstance())
+                        .setRound(message.getRound())
+                        .setMessage(message.getMessage())
+                        .setJustification(message.getJustification())
+                        .build();
+                // Broadcast with self signature and senderId
+                this.link.broadcast(broadcastMessage);
+            }
         }
 
-        roundChangeMessages.addMessage(message);
-
-        Optional<String> roundChangeValue;
-        roundChangeValue = roundChangeMessages.existsCorrectRoundChangeSet(config.getId(), consensusInstance, round);
-
-        // Upon rule -> if received a valid set of (f + 1) broadcast ROUND-CHANGE with round rmin
-        // TODO - check if rmin <= rj
-        if(roundChangeValue.isPresent() && instance.getPreparedRound() < round) {
-            instance.setLatestRoundChangeBroadcast(round);
-            ConsensusMessage broadcastMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
-                    .setConsensusInstance(message.getConsensusInstance())
-                    .setRound(message.getRound())
-                    .setMessage(message.getMessage())
-                    .setJustification(message.getJustification())
-                    .build();
-            // Broadcast with self signature and senderId
-            this.link.broadcast(broadcastMessage);
+        if (instance.getLatestRoundChange() >=  round) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Already received ROUND-CHANGE quorum for Consensus Instance {1}, Round {2}, ignoring",
+                            config.getId(), consensusInstance, round));
+            return;
         }
 
         // Verify if it has received Quorum, ROUND_CHANGE messages
@@ -617,14 +636,12 @@ public class NodeService implements UDPService {
 
         List<ConsensusMessage> receivedJustification = message.getJustification();
 
-        // TODO - verify if upon rule is only triggered once per round
-
         // Upon rule -> Check if it has received a round change quorum
         if (roundChangeValue.isPresent() &&
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
 
-            System.out.println("ROUND CHANGE QUORUM RECEIVED");
+            System.out.println("\nROUND CHANGE QUORUM RECEIVED");
 
             instance.setLatestRoundChange(round);
 
