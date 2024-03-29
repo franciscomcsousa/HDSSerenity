@@ -14,7 +14,7 @@ public class TResponseMessage {
 
     // Status, can be successful or fail
     public enum Status {
-        SUCCESS, FAILED_BALANCE, FAILED_RECEIVER, FAILED_SENDER;
+        SUCCESS, FAILED_BALANCE, FAILED_RECEIVER, FAILED_SENDER, FAILED_SIGNATURE;
     }
 
     public TResponseMessage(String transaction, Status status) {

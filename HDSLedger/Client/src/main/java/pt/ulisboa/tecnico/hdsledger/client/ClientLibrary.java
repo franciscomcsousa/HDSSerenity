@@ -101,6 +101,15 @@ public class ClientLibrary {
             System.out.print(">> ");
             return;
         }
+        // If transfer fails due to a signature missmatch
+        if (transferResponse.getStatus() == TResponseMessage.Status.FAILED_SIGNATURE) {
+            System.out.println(MessageFormat.format(
+                    "{0} - Transfer Failed, from node {1}. Signature mismatch",
+                    clientConfig.getId(), message.getSenderId()));
+            System.out.println();
+            System.out.print(">> ");
+            return;
+        }
 
         // Adds response to the list, and checks how many it has
         transferResponses.computeIfAbsent(nonce, key -> new ArrayList<>())

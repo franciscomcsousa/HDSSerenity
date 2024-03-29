@@ -61,7 +61,8 @@ public class NodeService implements UDPService {
     private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
 
     // Auxiliary client balances for checking if the client has enough money to do a transaction
-    private final Map<String, Integer> auxClientsBalance = new ConcurrentHashMap<>();
+    // Has the transactions of the current block (that has not yet been committed)
+    private final Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
 
     // Transfer Requests Queue
     private final List<String> transactionRequests = new LinkedList<>();
@@ -82,7 +83,7 @@ public class NodeService implements UDPService {
 
         // Update Map with clients IDs and respective balances
         Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10));
-        Arrays.stream(clientConfigs).forEach(client -> this.auxClientsBalance.put(client.getId(), 10));
+        Arrays.stream(clientConfigs).forEach(client -> this.currentClientsBalance.put(client.getId(), 10));
     }
 
     public ProcessConfig getConfig() {
@@ -128,6 +129,26 @@ public class NodeService implements UDPService {
         return newBlock;
     }
 
+    public boolean verifyBlockAuthenticity(Block block) throws Exception {
+        List<Transaction> transactions = block.getTransactions();
+
+        // TODO - verify block creator signature
+
+        for (Transaction transaction: transactions) {
+            if (!verifyTransactionAuthenticity(transaction)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean verifyTransactionAuthenticity(Transaction transaction) throws Exception {
+        if (RSASignature.verifySign(transaction.getSignable(),  transaction.getSignature(),  transaction.getSender()))
+            return true;
+        else
+            return false;
+    }
+
     // Get the balance of a specific client passed as an argument
     public int getBalance(String clientId) {
         return clientsBalance.get(clientId);
@@ -146,9 +167,18 @@ public class NodeService implements UDPService {
 
         // Verifies if client has enough money to do that transaction
         if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() || 
-        auxClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
-            auxClientsBalance.forEach((key, value) -> auxClientsBalance.put(key, clientsBalance.get(key)));
+        currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
             TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_BALANCE);
+            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+            clientMessage.setMessage(tResponseMessage.toJson());
+
+            clientLink.send(transaction.getSender(), clientMessage);
+            return;
+        }
+
+        if (!verifyTransactionAuthenticity(transaction)){
+            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_SIGNATURE);
             ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
             clientMessage.setMessage(tResponseMessage.toJson());
 
@@ -158,7 +188,7 @@ public class NodeService implements UDPService {
 
         // Adds the transaction to the Queue
         transactionRequests.add(transaction.toJson());
-        auxClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
+        currentClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
 
         Block newBlock = new Block();
 
@@ -166,7 +196,7 @@ public class NodeService implements UDPService {
         // TODO maybe change so it doesnt create a useless block
         if (transactionRequests.size() == newBlock.getMaxBlockSize()) {
             // Reset the auxClientsBalance
-            auxClientsBalance.forEach((key, value) -> auxClientsBalance.put(key, clientsBalance.get(key)));
+            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
             startConsensus();
         }
     }
@@ -244,7 +274,7 @@ public class NodeService implements UDPService {
         timerInstance = localConsensusInstance;
     }
 
-    /*
+    /**
      * Handle pre prepare messages and if the message
      * came from leader and is justified then broadcast prepare
      *
@@ -266,12 +296,16 @@ public class NodeService implements UDPService {
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
-        // Verify if Block created by the leader has valid transactions
-        for (Transaction transaction : block.getTransactions()) {
-            if (!transactionRequests.contains(transaction.toJson()))
-                return;
+        // TODO - verify if byzantine leader is not holding transactions hostage
+        // TODO - verify balance again
+        // Verify if Block created by the leader has authentic transactions
+        if (!verifyBlockAuthenticity(block)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Unauthentic transaction in PRE-PREPARE from {1} Consensus Instance {2}, Round {3}",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
         }
-
 
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId))
@@ -335,7 +369,7 @@ public class NodeService implements UDPService {
         }
     }
 
-    /*
+    /**
      * Handle prepare messages and if there is a valid quorum broadcast commit
      *
      * @param message Message to be handled
@@ -436,7 +470,7 @@ public class NodeService implements UDPService {
         }
     }
 
-    /*
+    /**
      * Handle commit messages and decide if there is a valid quorum
      *
      * @param message Message to be handled
@@ -490,9 +524,9 @@ public class NodeService implements UDPService {
                 // Increment size of ledger to accommodate current instance
                 // TODO - do not add a block without checking if its sequential
                 ledger.ensureCapacity(consensusInstance);
-//                while (ledger.size() < consensusInstance - 1) {
-//                    ledger.add("");
-//                }
+                //while (ledger.size() < consensusInstance - 1) {
+                //    ledger.add("");
+                //}
                 
                 ledger.add(consensusInstance - 1, blockToLedger);
 
@@ -534,7 +568,7 @@ public class NodeService implements UDPService {
                 synchronized(clientsBalance) {
                     clientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
                     clientsBalance.put(transaction.getReceiver(), clientsBalance.get(transaction.getReceiver()) + transaction.getAmount());
-                    auxClientsBalance.forEach((key, value) -> auxClientsBalance.put(key, clientsBalance.get(key)));
+                    currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
                 }
 
                 String senderId = transaction.getSender();
@@ -558,7 +592,7 @@ public class NodeService implements UDPService {
         }
     }
 
-    /*
+    /**
      * Check if a PrePrepare is justified
      *
      */
@@ -608,7 +642,7 @@ public class NodeService implements UDPService {
                 prepareQuorumValue.get().equals(highestRoundChangeMessage.get().getPreparedValue());
     }
 
-    /*
+    /**
      * Handle roundChange messages and decide if there is a valid quorum
      * @param message ConsensusMessage to be handled
      */
@@ -736,7 +770,7 @@ public class NodeService implements UDPService {
         }
     }
 
-    /*
+    /**
      * Timer has expired, send a request for a round change to the others
      */
     public synchronized void uponTimerExpiry() {
