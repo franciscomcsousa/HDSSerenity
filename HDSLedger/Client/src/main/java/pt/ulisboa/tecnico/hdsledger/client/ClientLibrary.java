@@ -4,6 +4,8 @@ import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.service.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +39,15 @@ public class ClientLibrary {
         this.smallQuorumSize = f + 1;
     }
 
+    public int createNonce() {
+        try {
+            return SecureRandom.getInstance("SHA1PRNG").nextInt();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
     // Transfer amount from the client to the destination
     public void transfer(String nodeId, String destination, Integer amount) {
         // Check if amount is positive
@@ -49,13 +60,11 @@ public class ClientLibrary {
 
         // Create a message and broadcast it to the nodes
         ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.TRANSFER);
-        TransferMessage transferMessage = new TransferMessage(nodeId, destination, amount);
+        TransferMessage transferMessage = new TransferMessage(nodeId, destination, amount, createNonce());
         clientMessage.setMessage(transferMessage.toJson());
 
         linkToNodes.broadcast(clientMessage);
     }
-
-
 
     // Checks user balance
     public void check_balance(){

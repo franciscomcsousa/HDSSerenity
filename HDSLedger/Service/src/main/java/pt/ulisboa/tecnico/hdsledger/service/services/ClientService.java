@@ -43,9 +43,11 @@ public class ClientService implements UDPService {
         TransferMessage transferMessage = message.deserializeTransferMessage();
         String receiverId = transferMessage.getReceiver();
         String senderId = transferMessage.getSender();
+        Integer amount = transferMessage.getAmount();
+        Integer nonce = transferMessage.getNonce();
 
         // Creates Transaction
-        Transaction newTransaction = new Transaction(transferMessage.getSender(),receiverId,transferMessage.getAmount());
+        Transaction newTransaction = new Transaction(senderId,receiverId,amount,nonce);
 
         // Verify ReceiverID, does it exist?
         if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){

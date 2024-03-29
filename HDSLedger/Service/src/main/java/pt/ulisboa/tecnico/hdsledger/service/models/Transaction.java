@@ -12,17 +12,11 @@ public class Transaction {
     private int nonce;
     private byte[] signature;
 
-    public Transaction(String sender, String receiver, int amount){
+    public Transaction(String sender, String receiver, Integer amount, Integer nonce){
         this.sender = sender;
         this.receiver = receiver;
         this.amount = amount;
-        int newNonce;
-        try {
-            newNonce = SecureRandom.getInstance("SHA1PRNG").nextInt();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-        this.nonce = newNonce;
+        this.nonce = nonce;
     }
 
     public int getAmount() {

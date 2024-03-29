@@ -65,7 +65,7 @@ public class NodeService implements UDPService {
     private final Map<String, Integer> auxClientsBalance = new ConcurrentHashMap<>();
 
     // Transfer Requests Queue
-    private final List<Transaction> transactionRequests = new LinkedList<>();
+    private final List<String> transactionRequests = new LinkedList<>();
 
     public NodeService(Link link, Link clientLink, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientConfigs) {
@@ -120,7 +120,11 @@ public class NodeService implements UDPService {
 
         // Add to block the first n elements of transactionRequests
         // Does not delete the elements
-        newBlock.setTransactions(transactionRequests.stream().limit(newBlock.getMaxBlockSize()).collect(Collectors.toList()));
+        List<String> transactionsJson = transactionRequests.stream().limit(newBlock.getMaxBlockSize()).toList();
+        for (String transaction : transactionsJson) {
+            newBlock.addTransaction(Transaction.fromJson(transaction));
+        }
+
         newBlock.setNodeId(nodeId);
         return newBlock;
     }
@@ -154,7 +158,7 @@ public class NodeService implements UDPService {
         }
 
         // Adds the transaction to the Queue
-        transactionRequests.add(transaction);
+        transactionRequests.add(transaction.toJson());
         auxClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
 
         Block newBlock = new Block();
@@ -207,7 +211,7 @@ public class NodeService implements UDPService {
 
             // Add to block different made up transactions
             for (int i = 0; i < block.getMaxBlockSize(); i++) {
-                Transaction transaction = new Transaction("20", "21", 100);
+                Transaction transaction = new Transaction("20", "21", 100, -1);
                 block.addTransaction(transaction);
             }
 
@@ -261,6 +265,13 @@ public class NodeService implements UDPService {
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
+        // Verify if Block created by the leader has valid transactions
+        for (Transaction transaction : block.getTransactions()) {
+            if (!transactionRequests.contains(transaction.toJson()))
+                return;
+        }
+
+
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId))
             return;
@@ -295,7 +306,7 @@ public class NodeService implements UDPService {
             Block differentBlock = new Block();
 
             for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
-                Transaction transaction = new Transaction("20", "21", 100);
+                Transaction transaction = new Transaction("20", "21", 100, -1);
                 differentBlock.addTransaction(transaction);
             }
 
@@ -395,7 +406,7 @@ public class NodeService implements UDPService {
                 Block differentBlock = new Block();
 
                 for (int i = 0; i < differentBlock.getMaxBlockSize(); i++) {
-                    Transaction transaction = new Transaction("20", "21", 100);
+                    Transaction transaction = new Transaction("20", "21", 100, -1);
                     differentBlock.addTransaction(transaction);
                 }
 
@@ -521,11 +532,11 @@ public class NodeService implements UDPService {
 
                 // Respond to the client
                 clientLink.send(senderId, clientMessage);
+
+                // removes the transactions committed from the transactionsRequest
+                transactionRequests.remove(transaction.toJson());
             }
 
-            // removes the transactions committed from the transactionsRequest
-            transactionRequests.subList(0, committedBlock.getMaxBlockSize()).clear();
-            
             // Cancels the timer of the consensus when a quorum of commits
             // is acquired
             timerConsensus.cancel();

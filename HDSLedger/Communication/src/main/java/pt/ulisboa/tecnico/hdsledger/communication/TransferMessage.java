@@ -8,11 +8,14 @@ public class TransferMessage {
     private final String receiver;
     private final int amount;
 
+    private final int nonce;
 
-    public TransferMessage(String sender, String receiver, Integer amount) {
+
+    public TransferMessage(String sender, String receiver, Integer amount, Integer nonce) {
         this.sender = sender;
         this.receiver = receiver;
         this.amount = amount;
+        this.nonce = nonce;
     }
 
     public String getSender() {
@@ -23,6 +26,8 @@ public class TransferMessage {
     }
 
     public int getAmount() { return amount; }
+
+    public int getNonce() { return nonce; }
 
     public String toJson() {
         return new Gson().toJson(this);
