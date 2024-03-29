@@ -9,14 +9,11 @@ public class InstanceInfo {
     private int preparedRound = -1;
     private Block preparedBlock;
     private CommitMessage commitMessage;
-    private Block inputBlock;
     private int committedRound = -1;
     private int latestRoundChange = -1;
     private int latestRoundChangeBroadcast = -1;
 
-    public InstanceInfo(Block inputBlock) {
-        this.inputBlock = inputBlock;
-    }
+    public InstanceInfo() { }
 
     public int getCurrentRound() {
         return currentRound;
@@ -42,14 +39,6 @@ public class InstanceInfo {
 
     public void setPreparedBlock(Block preparedBlock) {
         this.preparedBlock = preparedBlock;
-    }
-
-    public Block getInputBlock() {
-        return inputBlock;
-    }
-
-    public void setInputBlock(Block inputBlock) {
-        this.inputBlock = inputBlock;
     }
 
     public int getCommittedRound() {
