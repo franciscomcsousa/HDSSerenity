@@ -28,8 +28,6 @@ public class RSASignature {
         return "../KeyInfrastructure/id" + stringId + ".key.pub";
     }
 
-    // check if there is a better way, to not have 2 getFunctions
-    // TODO
     private static PrivateKey getPrivateKey(String stringId) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         byte[] privEncoded;
         String privKeyPath = getPrivatePath(stringId);
@@ -59,6 +57,14 @@ public class RSASignature {
         return keyFacPub.generatePublic(pubSpec);
     }
 
+    /**
+     * Creates a signature of the given data
+     *
+     * @param signable data to sign
+     * @param stringId authout of the signature
+     * @return byte[] - signature of the data
+     * @throws Exception exception
+     */
     public static byte[] sign(String signable, String stringId) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hashedData = digest.digest(signable.getBytes(StandardCharsets.UTF_8));
@@ -72,6 +78,15 @@ public class RSASignature {
         return privateSignature.sign();
     }
 
+    /**
+     * Verifies if the given signature was created by the author and correspond to the signable object
+     *
+     * @param signable data which was originally signed
+     * @param signature signature
+     * @param stringId author of the signature
+     * @return boolean - whether the signature matches the author's public key
+     * @throws Exception exception
+     */
     public static boolean verifySign(String signable, byte[] signature, String stringId) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hashedData = digest.digest(signable.getBytes(StandardCharsets.UTF_8));

@@ -17,54 +17,53 @@ import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
 
 public class NodeService implements UDPService {
 
+    /** Used to log behaviour */
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
-    // Nodes configurations
+    /** Nodes configurations */
     private final ProcessConfig[] nodesConfig;
 
-    // Current node is leader
+    /** Current node is leader */
     private final ProcessConfig config;
-    // Leader configuration
+    /** Leader configuration */
     private ProcessConfig leaderConfig;
 
-    // Link to communicate with nodes
+    /** Link to communicate with nodes */
     private final Link link;
-    // Link to communicate with clients
+    /** Link to communicate with clients */
     private final Link clientLink;
 
-    // Consensus instance -> Round -> List of prepare messages
+    /** Consensus instance -> Round -> List of prepare messages */
     private final MessageBucket prepareMessages;
-    // Consensus instance -> Round -> List of commit messages
+    /** Consensus instance -> Round -> List of commit messages */
     private final MessageBucket commitMessages;
-    // Consensus instance -> Round -> List of roundChange messages
+    /** Consensus instance -> Round -> List of roundChange messages */
     private final MessageBucket roundChangeMessages;
 
-    // Store if already received pre-prepare for a given <consensus, round>
+    /** Store if already received pre-prepare for a given <consensus, round> */
     private final Map<Integer, Map<Integer, Boolean>> receivedPrePrepare = new ConcurrentHashMap<>();
-    // Consensus instance information per consensus instance
+    /** Consensus instance information per consensus instance */
     private final Map<Integer, InstanceInfo> instanceInfo = new ConcurrentHashMap<>();
-    // Current consensus instance
+    /** Current consensus instance */
     private final AtomicInteger consensusInstance = new AtomicInteger(0);
-    // Last decided consensus instance
+    /** Last decided consensus instance */
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
-    // Timer to trigger round changes
+    /** Timer to trigger round changes */
     private Timer timerConsensus;
 
-    // Consensus should take max timerMilliseconds
+    /** Consensus should take max timerMilliseconds */
     private final int timerMillis = 5000;
     
-    // Consensus instance to which the timer is counting
+    /** Consensus instance to which the timer is counting */
     private int timerInstance = -1;
-
+    /** Ledger that stores all blocks */
     private ArrayList<Block> ledger = new ArrayList<Block>();
-
-    // Client Balances
+    /** Client Balances */
     private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
-
-    // Auxiliary client balances for checking if the client has enough money to do a transaction
-    // Has the transactions of the current block (that has not yet been committed)
+     /** Auxiliary client balances for checking if the client has enough money to do a transaction
+     * Has the transactions of the current block (that has not yet been committed) */
     private final Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
 
-    // Transfer Requests Queue
+    /** Transfer Requests Queue */
     private final List<String> transactionRequests = new LinkedList<>();
 
     // Transactions nonce's that have been committed
@@ -104,7 +103,15 @@ public class NodeService implements UDPService {
     private boolean isLeader(String id) {
         return this.leaderConfig.getId().equals(id);
     }
- 
+
+    /**
+     * Used to create the PRE-PREPARE message
+     * Virtually the start of the consensus
+     * @param block the block to preprepare
+     * @param instance instance
+     * @param round round
+     * @return ConsensusMessage
+     */
     public ConsensusMessage createConsensusMessage(Block block, int instance, int round) {
         String blockToJson = block.toJson();
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(blockToJson);
@@ -118,6 +125,11 @@ public class NodeService implements UDPService {
         return consensusMessage;
     }
 
+    /**
+     *
+     * @param nodeId the author of the block
+     * @return Block the created block
+     */
     public Block createBlock (String nodeId) {
         Block newBlock = new Block();
 
@@ -128,10 +140,17 @@ public class NodeService implements UDPService {
             newBlock.addTransaction(Transaction.fromJson(transaction));
         }
 
-        newBlock.setNodeId(nodeId);
+        newBlock.setAuthorId(nodeId);
         return newBlock;
     }
 
+    /**
+     * Verifies if a block is authentic, i.e its transactions and author signature are valid
+     *
+     * @param block the block to be verified
+     * @return boolean whether the block is authentic
+     * @throws Exception exception
+     */
     public boolean verifyBlockAuthenticity(Block block) throws Exception {
         List<Transaction> transactions = block.getTransactions();
 
@@ -145,6 +164,13 @@ public class NodeService implements UDPService {
         return true;
     }
 
+    /**
+     *  Verifies if a transaction is authentic, i.e its signature is valid
+     *
+     * @param transaction the transaction to be verified
+     * @return boolean whether the transaction is authentic
+     * @throws Exception exception
+     */
     public boolean verifyTransactionAuthenticity(Transaction transaction) throws Exception {
         if (RSASignature.verifySign(transaction.getSignable(),  transaction.getSignature(),  transaction.getSender()))
             return true;
@@ -163,6 +189,7 @@ public class NodeService implements UDPService {
      * If a block can be created, start a consensus
      *
      * @param transaction New Transaction added to the Queue
+     * @throws Exception exception
      */
     public void newTransferRequest(Transaction transaction) throws Exception {
 
@@ -209,7 +236,7 @@ public class NodeService implements UDPService {
         Block newBlock = new Block();
 
         // if there are enough Transactions for a block startConsensus
-        // TODO maybe change so it doesnt create a useless block
+        // TODO - maybe change so it doesnt create a useless block
         if (transactionRequests.size() == newBlock.getMaxBlockSize()) {
             // Reset the auxClientsBalance
             currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
@@ -223,6 +250,7 @@ public class NodeService implements UDPService {
      * Only the current leader will start a consensus instance
      * the remaining nodes only update timers.
      *
+     * @throws Exception exception
      */
     public void startConsensus() throws Exception {
         
@@ -291,10 +319,11 @@ public class NodeService implements UDPService {
     }
 
     /**
-     * Handle pre prepare messages and if the message
+     * Handle Pre Prepare messages and if the message
      * came from leader and is justified then broadcast prepare
      *
      * @param message Message to be handled
+     * @throws Exception exception
      */
     public void uponPrePrepare(ConsensusMessage message) throws Exception {
 
@@ -389,6 +418,7 @@ public class NodeService implements UDPService {
      * Handle prepare messages and if there is a valid quorum broadcast commit
      *
      * @param message Message to be handled
+     * @throws Exception exception
      */
     public synchronized void uponPrepare(ConsensusMessage message) throws Exception {
 
@@ -612,8 +642,13 @@ public class NodeService implements UDPService {
     }
 
     /**
-     * Check if a PrePrepare is justified
-     *
+     * Check whether a PrePrepare is correctly justified
+     * @param nodeId self identification
+     * @param instance instance in question
+     * @param round round in question
+     * @param justification justification sent by the sender of the PrePrepare message
+     * @return boolean whether the justification is valid
+     * @throws Exception exception
      */
     public boolean justifyPrePrepare(String nodeId, int instance, int round, List<ConsensusMessage> justification) throws Exception {
         return round == 1 || this.justifyRoundChange(nodeId, instance, round, justification);
@@ -663,7 +698,9 @@ public class NodeService implements UDPService {
 
     /**
      * Handle roundChange messages and decide if there is a valid quorum
+     *
      * @param message ConsensusMessage to be handled
+     * @throws Exception exception
      */
     public synchronized void uponRoundChange(ConsensusMessage message) throws Exception {
 
@@ -758,7 +795,7 @@ public class NodeService implements UDPService {
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
             // otherwise the value is to be created in the startConsensus function
-            // TODO change, to only call startConsensus even when there is a preparedBlock
+            // TODO - improve - change to only call startConsensus even when there is a preparedBlock
             if (config.isLeader()) {
                 Block value = instance.getPreparedBlock();
                 if (value == null) {
@@ -790,7 +827,7 @@ public class NodeService implements UDPService {
     }
 
     /**
-     * Timer has expired, send a request for a round change to the others
+     * Called whenever timer has expired, send a request for a round change to all other nodes
      */
     public synchronized void uponTimerExpiry() {
         /*  ri ← ri + 1

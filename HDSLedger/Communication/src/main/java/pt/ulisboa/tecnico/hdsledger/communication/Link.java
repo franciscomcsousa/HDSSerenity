@@ -18,23 +18,23 @@ import java.util.logging.LogManager;
 public class Link {
 
     private static final CustomLogger LOGGER = new CustomLogger(Link.class.getName());
-    // Time to wait for an ACK before resending the message
+    /** Time to wait for an ACK before resending the message */
     private final int BASE_SLEEP_TIME;
-    // UDP Socket
+    /** UDP Socket */
     private final DatagramSocket socket;
-    // Map of all nodes in the network
+    /** Map of all nodes in the network */
     private final Map<String, ProcessConfig> nodes = new ConcurrentHashMap<>();
-    // Reference to the node itself
+    /** Reference to the node itself */
     private final ProcessConfig config;
-    // Class to deserialize messages to
+    /** Class to deserialize messages to */
     private final Class<? extends Message> messageClass;
-    // Set of received messages from specific node (prevent duplicates)
+    /** Set of received messages from specific node (prevent duplicates) */
     private final Map<String, CollapsingSet> receivedMessages = new ConcurrentHashMap<>();
-    // Set of received ACKs from specific node
+    /** Set of received ACKs from specific node */
     private final CollapsingSet receivedAcks = new CollapsingSet();
-    // Message counter
+    /** Message counter */
     private final AtomicInteger messageCounter = new AtomicInteger(0);
-    // Send messages to self by pushing to queue instead of through the network
+    /** Send messages to self by pushing to queue instead of through the network */
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass) {
@@ -68,7 +68,7 @@ public class Link {
         receivedAcks.addAll(messageIds);
     }
 
-    /*
+    /**
      * Broadcasts a message to all nodes in the network
      *
      * @param data The message to be broadcasted
@@ -83,14 +83,12 @@ public class Link {
         );
     }
 
-    /*
+    /**
      * Sends a message to a specific node with guarantee of delivery
      *
      * @param nodeId The node identifier
      *
      * @param data The message to be sent
-     *
-     * @param signature The message to be sent
      */
     public void send(String nodeId, Message data) {
 
@@ -155,12 +153,12 @@ public class Link {
         }).start();
     }
 
-    /*
+    /**
      * Sends a message to a specific node without guarantee of delivery
      * Mainly used to send ACKs, if they are lost, the original message will be
      * resent
      *
-     * @param address The address of the destination node
+     * @param hostname The address of the destination node
      *
      * @param port The port of the destination node
      *

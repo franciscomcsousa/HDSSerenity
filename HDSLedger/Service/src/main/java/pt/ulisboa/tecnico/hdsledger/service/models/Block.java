@@ -6,14 +6,13 @@ import com.google.gson.Gson;
 
 public class Block {
 
-    // TODO - add block creator
     // TODO - add special transaction, fixed value sent to block creator
     private List<Transaction> transactions = new LinkedList<Transaction>();
 
     private int maxBlockSize = 2;
 
     // Node who created
-    private String nodeId;
+    private String authorId;
 
     public Block() {
 
@@ -31,12 +30,10 @@ public class Block {
 
     public void addTransaction(Transaction transaction) { this.transactions.add(transaction); }
 
-    public String getNodeId() { return nodeId; }
+    public String getAuthorId() { return authorId; }
 
-    public void setNodeId (String nodeId) { this.nodeId = nodeId; }
+    public void setAuthorId(String authorId) { this.authorId = authorId; }
 
-
-    // TODO - change to only sign the block stuff
     public String getSignable(){
         String signable = "";
         for (Transaction transaction : getTransactions()) {

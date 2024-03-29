@@ -22,7 +22,7 @@ public class Tests {
                     RSASignature.sign(signable, nodeId));
             block.addTransaction(transaction);
         }
-        block.setNodeId(nodeId);
+        block.setAuthorId(nodeId);
 
         return block;
     }

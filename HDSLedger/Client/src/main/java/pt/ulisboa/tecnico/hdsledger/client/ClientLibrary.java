@@ -72,59 +72,60 @@ public class ClientLibrary {
         Transaction transaction = Transaction.fromJson(transferResponse.getTransaction());
         int nonce = transaction.getNonce();
 
-        // If transfer fails due to not enough balance
-        if (transferResponse.getStatus() == TResponseMessage.Status.FAILED_BALANCE) {
-            System.out.println(MessageFormat.format(
-                    "{0} - Transfer Failed, from node {1}. Not enough balance to transfer amount {2} to client {3}",
-                    clientConfig.getId(), message.getSenderId(),
-                    transaction.getAmount(), transaction.getReceiver()));
-            System.out.println();
-            System.out.print(">> ");
-            return;
-        }
-        // If transfer fails due to receiver not existing
-        if (transferResponse.getStatus() == TResponseMessage.Status.FAILED_RECEIVER) {
-            System.out.println(MessageFormat.format(
-                    "{0} - Transfer Failed, from node {1}. Client {2} does not exist",
-                    clientConfig.getId(), message.getSenderId(),
-                    transaction.getReceiver()));
-            System.out.println();
-            System.out.print(">> ");
-            return;
-        }
-        // If transfer fails due to sender being the same as the receiver
-        if (transferResponse.getStatus() == TResponseMessage.Status.FAILED_SENDER) {
-            System.out.println(MessageFormat.format(
-                    "{0} - Transfer Failed, from node {1}. Sender and receiver are the same",
-                    clientConfig.getId(), message.getSenderId()));
-            System.out.println();
-            System.out.print(">> ");
-            return;
-        }
-        // If transfer fails due to a signature missmatch
-        if (transferResponse.getStatus() == TResponseMessage.Status.FAILED_SIGNATURE) {
-            System.out.println(MessageFormat.format(
-                    "{0} - Transfer Failed, from node {1}. Signature mismatch",
-                    clientConfig.getId(), message.getSenderId()));
-            System.out.println();
-            System.out.print(">> ");
-            return;
-        }
+        String formatString;
+        switch (transferResponse.getStatus()) {
+            case FAILED_BALANCE:
+                System.out.println(MessageFormat.format(
+                        "{0} - Transfer Failed, from node {1}. Not enough balance to transfer amount {2} to client {3}",
+                        clientConfig.getId(), message.getSenderId(),
+                        transaction.getAmount(), transaction.getReceiver()));
+                break;
 
-        // Adds response to the list, and checks how many it has
-        transferResponses.computeIfAbsent(nonce, key -> new ArrayList<>())
-                .add(transferResponse);
+            case FAILED_RECEIVER:
+                System.out.println(MessageFormat.format(
+                        "{0} - Transfer Failed, from node {1}. Client {2} does not exist",
+                        clientConfig.getId(), message.getSenderId(),
+                        transaction.getReceiver()));
+                break;
 
-        // Prints when its exactly f+1
-        if (transferResponses.get(nonce).size() == smallQuorumSize) {
-            System.out.println(MessageFormat.format(
-                    "{0} - Transfer Completed from f+1 nodes in position {1}. Transfer amount: {2}. Transfer recipient: {3}",
-                    clientConfig.getId(), transferResponse.getPosition(),
-                    transaction.getAmount(), transaction.getReceiver())
-            );
-            System.out.println();
-            System.out.print(">> ");
+            case FAILED_SENDER:
+                System.out.println(MessageFormat.format(
+                        "{0} - Transfer Failed, from node {1}. Sender and receiver are the same",
+                        clientConfig.getId(), message.getSenderId()));
+                break;
+
+            case FAILED_SIGNATURE:
+                System.out.println(MessageFormat.format(
+                        "{0} - Transfer Failed, from node {1}. Signature mismatch",
+                        clientConfig.getId(), message.getSenderId()));
+                break;
+
+            case FAILED_REPEATED:
+                // TODO - implement FAILED_REPEATED
+                break;
+
+            case SUCCESS:
+                // Adds response to the list, and checks how many it has
+                transferResponses.computeIfAbsent(nonce, key -> new ArrayList<>())
+                        .add(transferResponse);
+                // Prints when its exactly f+1
+                if (transferResponses.get(nonce).size() == smallQuorumSize) {
+                    System.out.println(MessageFormat.format(
+                            "{0} - Transfer Completed from f+1 nodes in position {1}. Transfer amount: {2}. Transfer recipient: {3}",
+                            clientConfig.getId(), transferResponse.getPosition(),
+                            transaction.getAmount(), transaction.getReceiver())
+                    );
+                }
+                break;
+
+            default:
+                System.out.println(MessageFormat.format(
+                        "{0} - Transfer Failed, from node {1}. Reason is unknown.",
+                        clientConfig.getId(), message.getSenderId()));
+                break;
         }
+        System.out.println();
+        System.out.print(">> ");
     }
 
     public void uponBalanceResponse(ClientMessage message) {

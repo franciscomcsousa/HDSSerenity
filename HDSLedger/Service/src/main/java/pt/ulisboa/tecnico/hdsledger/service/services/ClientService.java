@@ -14,19 +14,19 @@ public class ClientService implements UDPService {
 
     private static final CustomLogger LOGGER = new CustomLogger(NodeService.class.getName());
 
-    // Link to communicate with nodes
+    /** Link to communicate with nodes */
     private final Link link;
 
-    // (Self) node config
+    /** (Self) node config */
     private final ProcessConfig config;
 
-    // Nodes configurations
+    /** Nodes configurations */
     private final ProcessConfig[] nodesConfigs;
 
-    // Leader configuration
+    /** Leader configuration */
     private ProcessConfig[] clientConfigs;
 
-    // Node Service
+    /** Node Service */
     private NodeService nodeService;
 
     public ClientService(Link link, ProcessConfig config,
@@ -39,6 +39,12 @@ public class ClientService implements UDPService {
         this.nodeService = nodeService;
     }
 
+    /**
+     * Bridge between the client transfer request and node transfer processing
+     *
+     * @param message message sent by the client
+     * @throws Exception exception
+     */
     private void receivedTransfer(ClientMessage message) throws Exception {
         TransferMessage transferMessage = message.deserializeTransferMessage();
         String receiverId = transferMessage.getReceiver();
@@ -73,6 +79,11 @@ public class ClientService implements UDPService {
         nodeService.newTransferRequest(newTransaction);
     }
 
+    /**
+     * Bridge between the client balance request and node balance processing
+     *
+     * @param message message sent by the client
+     */
     private void receivedBalance(ClientMessage message) {
         String senderId = message.getSenderId();
         int balance = nodeService.getBalance(senderId);
