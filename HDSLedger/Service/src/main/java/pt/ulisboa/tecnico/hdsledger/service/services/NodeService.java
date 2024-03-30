@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import javax.swing.text.Style;
+
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
@@ -195,17 +197,15 @@ public class NodeService implements UDPService {
      * @return Optional<TResponseMessage.Status> - Status of validity, if Optional.empty(), is valid
      * @throws Exception exception
      */
-    public boolean verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
+    public Optional<TResponseMessage.Status> verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
         // Prevents replay attacks after a transaction is committed
         if (completedTransfers.contains(transaction.getNonce())) {
-            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_REPEATED);
-            return false;
+            return Optional.of(TResponseMessage.Status.FAILED_REPEATED);
         }
 
         // Prevents replay attacks before a transaction is committed
-        if (transactionRequests.stream().filter(t -> t.equals(transaction.toJson())).count() > 1) {
-            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_REPEATED);
-            return false;
+        else if (transactionRequests.stream().filter(t -> t.equals(transaction.toJson())).count() > 1) {
+            return Optional.of(TResponseMessage.Status.FAILED_REPEATED);
         }
 
         // Verifies if client has enough money to do that transaction
@@ -290,10 +290,9 @@ public class NodeService implements UDPService {
      */
     public void newTransferRequest(Transaction transaction) throws Exception {
         // CLIENT REPLAY ATTACK byzantine test
-        if (Tests.clientReplayAttack(config.getBehavior())){
+        if (Tests.clientReplayAttack(config.getBehavior()) && transactionRequests.size() > 0){
             // Adds the previous transaction in the Queue to the Queue again
-            if (transactionRequests.size() > 0)
-                transactionRequests.add(transactionRequests.get(transactionRequests.size() - 1));
+            transactionRequests.add(transactionRequests.get(transactionRequests.size() - 1));
         }
         else {
             // Adds the transaction to the Queue

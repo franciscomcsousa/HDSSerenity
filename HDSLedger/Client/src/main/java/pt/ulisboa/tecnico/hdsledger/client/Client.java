@@ -69,6 +69,8 @@ public class Client {
                     case "transfer": case "t":
                         if (splitInput.length != 3) {
                             System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer.");
+                            System.out.println();
+                            System.out.print(">> ");
                             break;
                         }
                         clientLibrary.transfer(id, splitInput[1], Integer.valueOf(splitInput[2]));
@@ -82,6 +84,8 @@ public class Client {
                     default:
                         System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer. " +
                             "Type 'balance <account id>' to check the balance. Type 'quit' to quit.");
+                        System.out.println();
+                        System.out.print(">> ");
                 }
             }
 
