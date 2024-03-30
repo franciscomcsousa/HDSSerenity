@@ -4,13 +4,13 @@ import com.google.gson.Gson;
 public class BResponseMessage {
     
     // Balance
-    private int balance;
+    private Double balance;
 
-    public BResponseMessage(int balance) {
+    public BResponseMessage(Double balance) {
         this.balance = balance;
     }
 
-    public int getBalance() {
+    public Double getBalance() {
         return balance;
     }
     

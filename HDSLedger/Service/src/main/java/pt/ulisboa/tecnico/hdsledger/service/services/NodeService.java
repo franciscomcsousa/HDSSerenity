@@ -7,8 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
-import javax.swing.text.Style;
-
 import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
@@ -61,7 +59,7 @@ public class NodeService implements UDPService {
     /** Ledger that stores all blocks */
     private ArrayList<Block> ledger = new ArrayList<Block>();
     /** Client Balances */
-    private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
+    private final Map<String, Double> clientsBalance = new ConcurrentHashMap<String, Double>();
     /** Transfer Requests Queue */
     private final List<String> transactionRequests = new LinkedList<>();
 
@@ -83,7 +81,7 @@ public class NodeService implements UDPService {
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
 
         // Update Map with clients IDs and respective balances
-        Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10));
+        Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10D));
     }
 
     public ProcessConfig getConfig() {
@@ -173,7 +171,7 @@ public class NodeService implements UDPService {
         }
 
         // Temporary client balance - verifies if transactions are valid in this context
-        Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
+        Map<String, Double> currentClientsBalance = new ConcurrentHashMap<>();
         // The block's transactions
         List<Transaction> transactions = block.getTransactions();
 
@@ -197,7 +195,7 @@ public class NodeService implements UDPService {
      * @return Optional<TResponseMessage.Status> - Status of validity, if Optional.empty(), is valid
      * @throws Exception exception
      */
-    public Optional<TResponseMessage.Status> verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
+    public Optional<TResponseMessage.Status> verifyTransactionValidity(Transaction transaction, Map<String, Double> currentClientsBalance) throws Exception {
         // Prevents replay attacks after and before a transaction is committed
         if (completedTransfers.contains(transaction.getNonce()) || transactionRequests.stream().filter(t -> t.equals(transaction.toJson())).count() > 1) {
             return Optional.of(TResponseMessage.Status.FAILED_REPEATED);
@@ -226,7 +224,7 @@ public class NodeService implements UDPService {
         List<Transaction> transactions = new ArrayList<>();
 
         // Temporary client balance - verifies if transactions are valid in this context
-        Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
+        Map<String, Double> currentClientsBalance = new ConcurrentHashMap<>();
 
         for (String transactionString : transactionRequests) {
             Transaction transaction = Transaction.fromJson(transactionString);
@@ -270,7 +268,7 @@ public class NodeService implements UDPService {
     }
 
     // Get the balance of a specific client passed as an argument
-    public int getBalance(String clientId) {
+    public Double getBalance(String clientId) {
         return clientsBalance.get(clientId);
     }
 

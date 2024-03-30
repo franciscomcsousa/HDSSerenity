@@ -49,7 +49,7 @@ public class ClientService implements UDPService {
         TransferMessage transferMessage = message.deserializeTransferMessage();
         String receiverId = transferMessage.getReceiver();
         String senderId = transferMessage.getSender();
-        Integer amount = transferMessage.getAmount();
+        double amount = transferMessage.getAmount();
         Integer nonce = transferMessage.getNonce();
         byte[] signature = transferMessage.getSignature();
 
@@ -86,7 +86,7 @@ public class ClientService implements UDPService {
      */
     private void receivedBalance(ClientMessage message) {
         String senderId = message.getSenderId();
-        int balance = nodeService.getBalance(senderId);
+        Double balance = nodeService.getBalance(senderId);
 
         // Create message with balance
         BResponseMessage bResponseMessage = new BResponseMessage(balance);

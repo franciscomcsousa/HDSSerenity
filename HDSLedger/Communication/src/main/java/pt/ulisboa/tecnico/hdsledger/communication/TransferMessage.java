@@ -10,11 +10,11 @@ public class TransferMessage {
 
     private final String sender;
     private final String receiver;
-    private final int amount;
+    private final double amount;
     private final int nonce;
     private byte[] signature;
 
-    public TransferMessage(String sender, String receiver, Integer amount) throws Exception {
+    public TransferMessage(String sender, String receiver, Double amount) throws Exception {
         this.sender = sender;
         this.receiver = receiver;
         this.amount = amount;
@@ -38,7 +38,7 @@ public class TransferMessage {
         return receiver;
     }
 
-    public int getAmount() { return amount; }
+    public double getAmount() { return amount; }
 
     public int getNonce() { return nonce; }
 

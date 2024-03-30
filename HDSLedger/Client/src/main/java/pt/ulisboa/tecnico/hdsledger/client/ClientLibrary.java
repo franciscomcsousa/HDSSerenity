@@ -4,8 +4,6 @@ import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.service.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +38,7 @@ public class ClientLibrary {
     }
 
     // Transfer amount from the client to the destination
-    public void transfer(String nodeId, String destination, Integer amount) throws Exception {
+    public void transfer(String nodeId, String destination, Double amount) throws Exception {
         // Check if amount is positive
         if (amount <= 0) {
             System.out.println("Amount must be positive");

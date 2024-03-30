@@ -73,7 +73,7 @@ public class Client {
                             System.out.print(">> ");
                             break;
                         }
-                        clientLibrary.transfer(id, splitInput[1], Integer.valueOf(splitInput[2]));
+                        clientLibrary.transfer(id, splitInput[1], Double.valueOf(splitInput[2]));
                         break;
                     case "balance": case "b":
                         clientLibrary.check_balance();
