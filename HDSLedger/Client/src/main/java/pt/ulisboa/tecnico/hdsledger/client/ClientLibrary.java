@@ -56,12 +56,15 @@ public class ClientLibrary {
     }
 
     // Checks user balance
-    public void check_balance(){
+    public void check_balance(String nodeId){
         // Reset the balance responses
         balanceResponses = 0;
         
         // Create a message and broadcast it to the nodes
         ClientMessage clientMessage = new ClientMessage(clientConfig.getId(), Message.Type.BALANCE);
+        BalanceMessage balanceMessage = new BalanceMessage(nodeId);
+        clientMessage.setMessage(balanceMessage.toJson());
+
         linkToNodes.broadcast(clientMessage);
     }
 
@@ -135,16 +138,33 @@ public class ClientLibrary {
 
     public void uponBalanceResponse(ClientMessage message) {
         BResponseMessage balanceResponse = message.deserializeBResponseMessage();
+        String nodeId = balanceResponse.getNodeId();
         
         // Adds response
         balanceResponses++;
 
         // Prints when its exactly f+1
         if (balanceResponses == smallQuorumSize) {
-            System.out.println(MessageFormat.format(
-                    "{0} - Balance: {1}",
-                    clientConfig.getId(), balanceResponse.getBalance())
-            );
+            switch (balanceResponse.getStatus()) {
+                case SUCCESS:
+                    System.out.println(MessageFormat.format(
+                            "{0} - Client {1} has a balance of {2}",
+                            clientConfig.getId(), nodeId, balanceResponse.getBalance())
+                    );
+                    break;
+                case FAILED_ID:
+                    System.out.println(MessageFormat.format(
+                            "{0} - Balance Failed. Client {1} does not exist",
+                            clientConfig.getId(), nodeId)
+                    );
+                    break;
+                default:
+                    System.out.println(MessageFormat.format(
+                            "{0} - Balance Failed. Reason is unknown.",
+                            clientConfig.getId())
+                    );
+                    break;
+            }
             System.out.println();
             System.out.print(">> ");
         }

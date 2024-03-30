@@ -50,7 +50,7 @@ public class Client {
             
             System.out.println("Client started. \n" +
                     "Type 'transfer <destination> <value>' to make a transfer. \n" +
-                    "Type 'balance' to check the balance. \n" +
+                    "Type 'balance <account id>' to check the balance. \n" +
                     "Type 'quit' to quit.");
             System.out.println();
             System.out.print(">> ");
@@ -69,14 +69,16 @@ public class Client {
                     case "transfer": case "t":
                         if (splitInput.length != 3) {
                             System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer.");
-                            System.out.println();
-                            System.out.print(">> ");
                             break;
                         }
                         clientLibrary.transfer(id, splitInput[1], Double.valueOf(splitInput[2]));
                         break;
                     case "balance": case "b":
-                        clientLibrary.check_balance();
+                        if (splitInput.length != 2) {
+                            System.out.println("Invalid command. Type 'balance <account id>' to check the balance.");
+                            break;
+                        }
+                        clientLibrary.check_balance(splitInput[1]);
                         break;
                     case "quit":
                         scanner.close();
@@ -84,9 +86,9 @@ public class Client {
                     default:
                         System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer. " +
                             "Type 'balance <account id>' to check the balance. Type 'quit' to quit.");
-                        System.out.println();
-                        System.out.print(">> ");
                 }
+                System.out.println();
+                System.out.print(">> ");
             }
 
         } catch (Exception e) {
