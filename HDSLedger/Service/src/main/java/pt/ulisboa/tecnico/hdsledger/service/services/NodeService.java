@@ -82,6 +82,7 @@ public class NodeService implements UDPService {
 
         // Update Map with clients IDs and respective balances
         Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10D));
+        Arrays.stream(nodesConfig).forEach(node -> this.clientsBalance.put(node.getId(), 0D));
     }
 
     public ProcessConfig getConfig() {
@@ -652,8 +653,12 @@ public class NodeService implements UDPService {
             for (Transaction transaction : committedBlock.getTransactions()) {
                 // Update the balances of the clients
                 synchronized(clientsBalance) {
+                    // TODO - check if author exists?
                     clientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
                     clientsBalance.put(transaction.getReceiver(), clientsBalance.get(transaction.getReceiver()) + transaction.getAmount());
+                    // Transaction fee
+                    clientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - Block.getFixedTransactionFee());
+                    clientsBalance.put(committedBlock.getAuthorId(), clientsBalance.get(committedBlock.getAuthorId()) + Block.getFixedTransactionFee());
                 }
 
                 String senderId = transaction.getSender();

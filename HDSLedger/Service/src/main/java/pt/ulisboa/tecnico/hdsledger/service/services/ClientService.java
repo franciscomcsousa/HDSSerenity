@@ -57,7 +57,8 @@ public class ClientService implements UDPService {
         Transaction newTransaction = new Transaction(senderId, receiverId, amount, nonce, signature);
 
         // Verify ReceiverID, does it exist?
-        if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))){
+        if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(receiverId))
+        && Arrays.stream(nodesConfigs).noneMatch(nodeId -> nodeId.getId().equals(receiverId))){
             TResponseMessage tResponseMessage = new TResponseMessage(newTransaction.toJson(), TResponseMessage.Status.FAILED_RECEIVER);
             ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
             clientMessage.setMessage(tResponseMessage.toJson());

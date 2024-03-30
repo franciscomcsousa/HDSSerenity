@@ -20,3 +20,5 @@ Ate agora passamos nos seguintes testes:
 - Leader grants total order of requests
 - Rotating leaders will make no transactions be held hostage
   - also grants that f+1 responses to a client transfer is enough
+- we chose double as a data type because of its precision
+- not forget to say that each id (client and nodes) is associated with a public key
