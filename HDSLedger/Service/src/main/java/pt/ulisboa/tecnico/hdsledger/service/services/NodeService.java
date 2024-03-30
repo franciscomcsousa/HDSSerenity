@@ -219,6 +219,7 @@ public class NodeService implements UDPService {
         }
 
         if (!verifyTransactionAuthenticity(transaction)){
+            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
             TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_SIGNATURE);
             ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
             clientMessage.setMessage(tResponseMessage.toJson());

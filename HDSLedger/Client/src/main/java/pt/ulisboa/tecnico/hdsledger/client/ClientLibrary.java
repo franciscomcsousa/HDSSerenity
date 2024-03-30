@@ -72,13 +72,14 @@ public class ClientLibrary {
         Transaction transaction = Transaction.fromJson(transferResponse.getTransaction());
         int nonce = transaction.getNonce();
 
-        String formatString;
         switch (transferResponse.getStatus()) {
             case FAILED_BALANCE:
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Not enough balance to transfer amount {2} to client {3}",
                         clientConfig.getId(), message.getSenderId(),
                         transaction.getAmount(), transaction.getReceiver()));
+                System.out.println();
+                System.out.print(">> ");
                 break;
 
             case FAILED_RECEIVER:
@@ -86,22 +87,32 @@ public class ClientLibrary {
                         "{0} - Transfer Failed, from node {1}. Client {2} does not exist",
                         clientConfig.getId(), message.getSenderId(),
                         transaction.getReceiver()));
+                System.out.println();
+                System.out.print(">> ");
                 break;
 
             case FAILED_SENDER:
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Sender and receiver are the same",
                         clientConfig.getId(), message.getSenderId()));
+                System.out.println();
+                System.out.print(">> ");
                 break;
 
             case FAILED_SIGNATURE:
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Signature mismatch",
                         clientConfig.getId(), message.getSenderId()));
+                System.out.println();
+                System.out.print(">> ");
                 break;
 
             case FAILED_REPEATED:
-                // TODO - implement FAILED_REPEATED
+                System.out.println(MessageFormat.format(
+                        "{0} - Transfer Failed, from node {1}. Repeated nonce",
+                        clientConfig.getId(), message.getSenderId()));
+                System.out.println();
+                System.out.print(">> ");
                 break;
 
             case SUCCESS:
@@ -115,6 +126,8 @@ public class ClientLibrary {
                             clientConfig.getId(), transferResponse.getPosition(),
                             transaction.getAmount(), transaction.getReceiver())
                     );
+                    System.out.println();
+                    System.out.print(">> ");
                 }
                 break;
 
@@ -122,10 +135,10 @@ public class ClientLibrary {
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Reason is unknown.",
                         clientConfig.getId(), message.getSenderId()));
+                System.out.println();
+                System.out.print(">> ");
                 break;
         }
-        System.out.println();
-        System.out.print(">> ");
     }
 
     public void uponBalanceResponse(ClientMessage message) {
