@@ -59,10 +59,6 @@ public class NodeService implements UDPService {
     private ArrayList<Block> ledger = new ArrayList<Block>();
     /** Client Balances */
     private final Map<String, Integer> clientsBalance = new ConcurrentHashMap<>();
-     /** Auxiliary client balances for checking if the client has enough money to do a transaction
-     * Has the transactions of the current block (that has not yet been committed) */
-    private final Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
-
     /** Transfer Requests Queue */
     private final List<String> transactionRequests = new LinkedList<>();
 
@@ -85,7 +81,6 @@ public class NodeService implements UDPService {
 
         // Update Map with clients IDs and respective balances
         Arrays.stream(clientConfigs).forEach(client -> this.clientsBalance.put(client.getId(), 10));
-        Arrays.stream(clientConfigs).forEach(client -> this.currentClientsBalance.put(client.getId(), 10));
     }
 
     public ProcessConfig getConfig() {
@@ -139,47 +134,18 @@ public class NodeService implements UDPService {
     }
 
     /**
-     * Returns a list of size MaxBlockSize, with valid transactions.
-     * If transactions not valid are found, remove them from the list.
+     *  Verifies if a transaction is authentic, i.e. its signature is valid
      *
-     * @return List<Transaction>; Transactions needed for the block; but can also be less
-     * @throws Exception;
+     * @param transaction the transaction to be verified
+     * @return boolean whether the transaction is authentic
+     * @throws Exception exception
      */
-    public List<Transaction> getValidTransactions() throws Exception {
-        List<Transaction> transactions = new ArrayList<>();
-
-        for (String transaction : transactionRequests) {
-            // if not valid, remove from the requests
-            if (!verifyTransactionValidity(Transaction.fromJson(transaction))) {
-                transactionRequests.remove(transaction);
-                continue;
-            }
-            transactions.add(Transaction.fromJson(transaction));
-            // number of transactions needed for the block creation
-            if(transactions.size() == Block.getMaxBlockSize())
-                return transactions;
-        }
-        // could be empty !
-        return transactions;
+    public boolean verifyTransactionAuthenticity(Transaction transaction) throws Exception {
+        return RSASignature.verifySign(transaction.getSignable(), transaction.getSignature(), transaction.getSender());
     }
 
     /**
-     *
-     * @param nodeId the author of the block
-     * @return Block the created block
-     */
-    public Block createBlock (String nodeId, List<Transaction> transactions) {
-        Block newBlock = new Block();
-
-        // Add to block the first n elements of transactionRequests
-        // validated, and authenticated
-        newBlock.setTransactions(transactions);
-        newBlock.setAuthorId(nodeId);
-        return newBlock;
-    }
-
-    /**
-     * Verifies if a block is authentic, i.e its transactions and author signature are valid
+     * Verifies if a block is authentic, i.e. its transactions and author signature are valid
      *
      * @param block the block to be verified
      * @return boolean whether the block is authentic
@@ -199,50 +165,113 @@ public class NodeService implements UDPService {
     }
 
     /**
-     *  Verifies if a transaction is authentic, i.e its signature is valid
+     * Verifies if a block is valid, i.e. its authentic and doesn't break balance
      *
-     * @param transaction the transaction to be verified
-     * @return boolean whether the transaction is authentic
+     * @param block the block to be verified
+     * @return boolean whether the block is valid
      * @throws Exception exception
      */
-    public boolean verifyTransactionAuthenticity(Transaction transaction) throws Exception {
-        if (RSASignature.verifySign(transaction.getSignable(),  transaction.getSignature(),  transaction.getSender()))
-            return true;
-        else
+    public boolean verifyBlockValidity(Block block) throws Exception {
+        if (!verifyBlockAuthenticity(block))
             return false;
+
+        // Temporary client balance - verifies if transactions are valid in this context
+        Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
+        // The block's transactions
+        List<Transaction> transactions = block.getTransactions();
+
+        for (Transaction transaction: transactions) {
+            currentClientsBalance.putIfAbsent(transaction.getSender(), clientsBalance.get(transaction.getSender()));
+            if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+                return false;
+            }
+            currentClientsBalance.replace(
+                    transaction.getSender(),
+                    clientsBalance.get(transaction.getSender()) - transaction.getAmount());
+        }
+        return true;
     }
 
     /**
-     * Verifies: balance before and after transaction, unique, authenticity
+     * Check if a transaction is valid, i.e. its authentic and doesn't break balance for the given context
      *
-     * @param transaction; transaction to be verified
-     * @return boolean; whether the transaction is valid
+     * @param transaction transaction to evaluate
+     * @param currentClientsBalance current balance context
+     * @return boolean - whether the transaction is valid for the context
+     * @throws Exception exception
      */
-    public boolean verifyTransactionValidity(Transaction transaction) throws Exception {
+    public boolean verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
         // TODO - more Transaction verification needed ?
 
-        // Stops attacks: replay attacks
+        // Prevents replay attacks
         if (completedTransfers.contains(transaction.getNonce())) {
             sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_REPEATED);
             return false;
         }
 
-        // TODO - not verifying well
         // Verifies if client has enough money to do that transaction
-        else if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() ||
-                currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
-            //currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
+        else if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
             sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_BALANCE);
             return false;
         }
-        
+
         // Verifies if transaction is signed by the client
         else if (!verifyTransactionAuthenticity(transaction)){
             sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_SIGNATURE);
             return false;
         }
-        System.out.println("TRUE!");
         return true;
+    }
+
+    /**
+     * Returns a list of size MaxBlockSize, with valid transactions.
+     * If transactions not valid are found, remove them from the list.
+     *
+     * @return List<Transaction> - Transactions needed for the block; but can also be less
+     * @throws Exception exception
+     */
+    public List<Transaction> getValidTransactions() throws Exception {
+        List<Transaction> transactions = new ArrayList<>();
+
+        // Temporary client balance - verifies if transactions are valid in this context
+        Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
+
+        for (String transactionString : transactionRequests) {
+            Transaction transaction = Transaction.fromJson(transactionString);
+            // To save memory, copy only from clientsBalance values used in this context
+            currentClientsBalance.putIfAbsent(transaction.getSender(), clientsBalance.get(transaction.getSender()));
+            // if not valid, remove from the requests
+            if (!verifyTransactionValidity(transaction, currentClientsBalance)) {
+                transactionRequests.remove(transactionString);
+                continue;
+            }
+            transactions.add(transaction);
+            currentClientsBalance.replace(
+                    transaction.getSender(),
+                    clientsBalance.get(transaction.getSender()) - transaction.getAmount());
+            // Number of transactions needed for the block creation
+            if(transactions.size() == Block.getMaxBlockSize())
+                return transactions;
+        }
+        // could be empty !
+        return transactions;
+    }
+
+    /**
+     * Creates a new block
+     *
+     * @param authorId author of the block
+     * @param transactions transaction of the block
+     * @return Block - newly created block
+     */
+    public Block createBlock (String authorId, List<Transaction> transactions) {
+        Block newBlock = new Block();
+
+        // Add to block the first n elements of transactionRequests
+        // validated, and authenticated
+        newBlock.setTransactions(transactions);
+        newBlock.setAuthorId(authorId);
+        return newBlock;
     }
 
     // Get the balance of a specific client passed as an argument
@@ -263,12 +292,9 @@ public class NodeService implements UDPService {
 
         // Adds the transaction to the Queue
         transactionRequests.add(transaction.toJson());
-        //currentClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
 
         // if there are enough Transactions for a block startConsensus
         if (transactionRequests.size() == Block.getMaxBlockSize()) {
-            // Reset the auxClientsBalance
-            //currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
             startConsensus();
         }
     }
@@ -370,12 +396,12 @@ public class NodeService implements UDPService {
                         config.getId(), senderId, consensusInstance, round));
 
         // TODO - verify if byzantine leader is not holding transactions hostage
-        // TODO - verify balance again
+        // TODO - verify block balance!
         // Verify if Block created by the leader has authentic transactions
-        if (!verifyBlockAuthenticity(block)) {
+        if (!verifyBlockValidity(block)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
-                            "{0} - Unauthentic transaction in PRE-PREPARE from {1} Consensus Instance {2}, Round {3}",
+                            "{0} - Invalid block in PRE-PREPARE from {1} Consensus Instance {2}, Round {3}",
                             config.getId(), senderId, consensusInstance, round));
             return;
         }
@@ -626,7 +652,6 @@ public class NodeService implements UDPService {
                 synchronized(clientsBalance) {
                     clientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
                     clientsBalance.put(transaction.getReceiver(), clientsBalance.get(transaction.getReceiver()) + transaction.getAmount());
-                    currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
                 }
 
                 String senderId = transaction.getSender();
