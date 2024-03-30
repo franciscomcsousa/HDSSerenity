@@ -146,27 +146,19 @@ public class NodeService implements UDPService {
     }
 
     /**
-     * Verifies if a block is authentic, i.e. its transactions and author signature are valid
+     * Verifies if a block is authentic, i.e. its signature is valid.
+     * (Doesn't verify transaction signatures)
      *
      * @param block the block to be verified
      * @return boolean whether the block is authentic
      * @throws Exception exception
      */
     public boolean verifyBlockAuthenticity(Block block) throws Exception {
-        List<Transaction> transactions = block.getTransactions();
-
-        // TODO - verify block creator signature
-
-        for (Transaction transaction: transactions) {
-            if (!verifyTransactionAuthenticity(transaction)){
-                return false;
-            }
-        }
-        return true;
+        return RSASignature.verifySign(block.getSignable(), block.getSignature(), block.getAuthorId());
     }
 
     /**
-     * Verifies if a block is valid, i.e. its authentic and doesn't break balance
+     * Verifies if a block is valid, i.e. block is authentic; transactions are unique and don't break balance
      *
      * @param block the block to be verified
      * @return boolean whether the block is valid
@@ -174,8 +166,9 @@ public class NodeService implements UDPService {
      */
     public boolean verifyBlockValidity(Block block) throws Exception {
         // Validity implies authenticity
-        if (!verifyBlockAuthenticity(block))
+        if (!verifyBlockAuthenticity(block)) {
             return false;
+        }
 
         // Temporary client balance - verifies if transactions are valid in this context
         Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
@@ -263,13 +256,14 @@ public class NodeService implements UDPService {
      * @param transactions transaction of the block
      * @return Block - newly created block
      */
-    public Block createBlock (String authorId, List<Transaction> transactions) {
-        Block newBlock = new Block();
+    public Block createBlock (String authorId, List<Transaction> transactions) throws Exception {
+        Block newBlock = new Block(authorId, transactions);
+
+        String signable = newBlock.getSignable();
+        newBlock.setSignature(RSASignature.sign(signable, authorId));
 
         // Add to block the first n elements of transactionRequests
         // validated, and authenticated
-        newBlock.setTransactions(transactions);
-        newBlock.setAuthorId(authorId);
         return newBlock;
     }
 
