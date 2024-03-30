@@ -133,7 +133,7 @@ public class Tests {
      * @return Block - the byzantine block
      * @throws Exception exception
      */
-    public static Optional<Block> replayAttack(ProcessConfig.Behavior behavior, String nodeId, int instance, List<Integer> nonces) throws Exception{
+    public static Optional<Block> nodeReplayAttack(ProcessConfig.Behavior behavior, String nodeId, int instance, List<Integer> nonces) throws Exception{
         if (behavior == ProcessConfig.Behavior.NODE_REPLAY_ATTACK) {
             // Here the attacker sends a replay attack on the second instance
             if (instance == 2 && nonces.size() > 0) {

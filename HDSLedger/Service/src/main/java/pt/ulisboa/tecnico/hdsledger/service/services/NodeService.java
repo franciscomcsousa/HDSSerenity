@@ -198,13 +198,8 @@ public class NodeService implements UDPService {
      * @throws Exception exception
      */
     public Optional<TResponseMessage.Status> verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
-        // Prevents replay attacks after a transaction is committed
-        if (completedTransfers.contains(transaction.getNonce())) {
-            return Optional.of(TResponseMessage.Status.FAILED_REPEATED);
-        }
-
-        // Prevents replay attacks before a transaction is committed
-        else if (transactionRequests.stream().filter(t -> t.equals(transaction.toJson())).count() > 1) {
+        // Prevents replay attacks after and before a transaction is committed
+        if (completedTransfers.contains(transaction.getNonce()) || transactionRequests.stream().filter(t -> t.equals(transaction.toJson())).count() > 1) {
             return Optional.of(TResponseMessage.Status.FAILED_REPEATED);
         }
 
@@ -358,8 +353,8 @@ public class NodeService implements UDPService {
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
 
             // NODE REPLAY ATTACK byzantine test
-            if (Tests.replayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).isPresent())
-                block = Tests.replayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).get();
+            if (Tests.nodeReplayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).isPresent())
+                block = Tests.nodeReplayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).get();
 
             ConsensusMessage m = this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound());
             this.link.broadcast(m);
