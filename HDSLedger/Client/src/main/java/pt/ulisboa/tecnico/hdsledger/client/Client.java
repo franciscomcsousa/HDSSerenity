@@ -64,21 +64,43 @@ public class Client {
 
                 String[] splitInput = input.split(" ");
 
+                // in case if for some reason, there are only spaces
+                if (splitInput.length == 0) continue;
+
                 // Case for each user input
                 switch(splitInput[0]){
                     case "transfer": case "t":
-                        if (splitInput.length != 3) {
+                        if (splitInput.length != 3 ) {
                             System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer.");
                             break;
                         }
-                        clientLibrary.transfer(id, splitInput[1], Double.valueOf(splitInput[2]));
+                        try {
+                            Integer.parseInt(splitInput[1]);
+                            Double.parseDouble(splitInput[2]);
+
+                            // If parsing is successful, proceed with the transfer
+                            clientLibrary.transfer(id, splitInput[1], Double.valueOf(splitInput[2]));
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid value format. Please enter integers for destination and doubles for amount.");
+                            System.out.println();
+                            System.out.print(">> ");
+                        }
                         break;
                     case "balance": case "b":
                         if (splitInput.length != 2) {
                             System.out.println("Invalid command. Type 'balance <account id>' to check the balance.");
                             break;
                         }
-                        clientLibrary.check_balance(splitInput[1]);
+                        try {
+                            Integer.parseInt(splitInput[1]);
+
+                            // If parsing is successful, proceed with the transfer
+                            clientLibrary.check_balance(splitInput[1]);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid value format. Please enter integers for destination.");
+                            System.out.println();
+                            System.out.print(">> ");
+                        }
                         break;
                     case "quit":
                         scanner.close();
