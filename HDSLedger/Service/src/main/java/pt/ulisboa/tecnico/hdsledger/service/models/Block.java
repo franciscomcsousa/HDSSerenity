@@ -7,9 +7,11 @@ import com.google.gson.Gson;
 public class Block {
 
     // TODO - add special transaction, fixed value sent to block creator
-    private List<Transaction> transactions = new LinkedList<Transaction>();
+    private List<Transaction> transactions = new LinkedList<>();
 
     private static int maxBlockSize = 2;
+
+    private static double fixedTransactionFee = 0.001;
 
     // Node who created
     private String authorId;
@@ -28,6 +30,10 @@ public class Block {
 
     public static int getMaxBlockSize() {
         return maxBlockSize;
+    }
+
+    public static double getFixedTransactionFee() {
+        return fixedTransactionFee;
     }
 
     public int getBlockSize() { return transactions.size(); }

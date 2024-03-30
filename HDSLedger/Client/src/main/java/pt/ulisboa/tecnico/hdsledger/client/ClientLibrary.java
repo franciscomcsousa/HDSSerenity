@@ -141,6 +141,7 @@ public class ClientLibrary {
 
         // Prints when its exactly f+1
         if (balanceResponses == smallQuorumSize) {
+            // TODO - print balance with more precision
             System.out.println(MessageFormat.format(
                     "{0} - Balance: {1}",
                     clientConfig.getId(), balanceResponse.getBalance())
