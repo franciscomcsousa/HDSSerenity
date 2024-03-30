@@ -22,7 +22,9 @@ public class ProcessConfig {
         MULT_LEADERS("MULT_LEADERS"),
         PREPARE_VALUE("PREPARE_VALUE"),
         COMMIT_VALUE("COMMIT_VALUE"),
-        NO_COMMIT("NO_COMMIT"),;
+        NO_COMMIT("NO_COMMIT"),
+        NODE_REPLAY_ATTACK("NODE_REPLAY_ATTACK"),
+        CLIENT_REPLAY_ATTACK("CLIENT_REPLAY_ATTACK"),;
 
         String behavior;
 

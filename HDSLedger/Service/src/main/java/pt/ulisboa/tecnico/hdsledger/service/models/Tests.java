@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
@@ -21,6 +22,25 @@ public class Tests {
                     "21",
                     100,
                     randomInt,
+                    RSASignature.sign(signable, nodeId));
+            block.addTransaction(transaction);
+        }
+        block.setAuthorId(nodeId);
+
+        return block;
+    }
+
+    private static Block createNewBlockWithNonce(String nodeId, int nonce) throws Exception{
+        Block block = new Block();
+
+        // Add to block different made up transactions
+        for (int i = 0; i < block.getMaxBlockSize(); i++) {
+            String signable = "20" + "21" + "100" + nonce;
+            Transaction transaction = new Transaction(
+                    "20",
+                    "21",
+                    100,
+                    nonce,
                     RSASignature.sign(signable, nodeId));
             block.addTransaction(transaction);
         }
@@ -103,4 +123,36 @@ public class Tests {
         return false;
     }
 
+    /**
+     *  This tests the behaviour when a node sends a replay attack
+     *
+     * @param behavior type of behaviour
+     * @param nodeId attacking node (only has access to its private key)
+     * @param instance id of the current instance
+     * @param nonces list of nonces
+     * @return Block - the byzantine block
+     * @throws Exception exception
+     */
+    public static Optional<Block> replayAttack(ProcessConfig.Behavior behavior, String nodeId, int instance, List<Integer> nonces) throws Exception{
+        if (behavior == ProcessConfig.Behavior.NODE_REPLAY_ATTACK) {
+            // Here the attacker sends a replay attack on the second instance
+            if (instance == 2 && nonces.size() > 0) {
+                return Optional.of(Tests.createNewBlockWithNonce(nodeId, nonces.get(0)));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     *  This tests the behaviour when a client sends a replay attack
+     *
+     * @param behavior type of behaviour
+     * @return boolean - whether to perform the test
+     */
+    public static boolean clientReplayAttack(ProcessConfig.Behavior behavior) {
+        if (behavior == ProcessConfig.Behavior.CLIENT_REPLAY_ATTACK) {
+            return true;
+        }
+        return false;
+    }
 }

@@ -201,10 +201,14 @@ public class NodeService implements UDPService {
      * @throws Exception exception
      */
     public boolean verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
-        // TODO - more Transaction verification needed ?
-
-        // Prevents replay attacks
+        // Prevents replay attacks after a transaction is committed
         if (completedTransfers.contains(transaction.getNonce())) {
+            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_REPEATED);
+            return false;
+        }
+
+        // Prevents replay attacks before a transaction is committed
+        if (transactionRequests.stream().filter(t -> t.equals(transaction.toJson())).count() > 1) {
             sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_REPEATED);
             return false;
         }
@@ -289,9 +293,16 @@ public class NodeService implements UDPService {
      * @throws Exception exception
      */
     public void newTransferRequest(Transaction transaction) throws Exception {
-
-        // Adds the transaction to the Queue
-        transactionRequests.add(transaction.toJson());
+        // CLIENT REPLAY ATTACK byzantine test
+        if (Tests.clientReplayAttack(config.getBehavior())){
+            // Adds the previous transaction in the Queue to the Queue again
+            if (transactionRequests.size() > 0)
+                transactionRequests.add(transactionRequests.get(transactionRequests.size() - 1));
+        }
+        else {
+            // Adds the transaction to the Queue
+            transactionRequests.add(transaction.toJson());
+        }
 
         // if there are enough Transactions for a block startConsensus
         if (transactionRequests.size() == Block.getMaxBlockSize()) {
@@ -350,6 +361,10 @@ public class NodeService implements UDPService {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+
+            // NODE REPLAY ATTACK byzantine test
+            if (Tests.replayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).isPresent())
+                block = Tests.replayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).get();
 
             ConsensusMessage m = this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound());
             this.link.broadcast(m);

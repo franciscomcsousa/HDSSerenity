@@ -18,6 +18,8 @@ server_configs = [
     "prepare_value",
     "commit_value",
     "no_commit",
+    "node_replay_attack",
+    "client_replay_attack",
 ]
 
 # Client node configuration file name
