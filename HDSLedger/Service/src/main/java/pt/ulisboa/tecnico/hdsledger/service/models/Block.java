@@ -9,7 +9,7 @@ public class Block {
     // TODO - add special transaction, fixed value sent to block creator
     private List<Transaction> transactions = new LinkedList<Transaction>();
 
-    private int maxBlockSize = 2;
+    private static int maxBlockSize = 2;
 
     // Node who created
     private String authorId;
@@ -18,7 +18,7 @@ public class Block {
 
     }
 
-    public int getMaxBlockSize() {
+    public static int getMaxBlockSize() {
         return maxBlockSize;
     }
 

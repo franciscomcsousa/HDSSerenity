@@ -126,20 +126,54 @@ public class NodeService implements UDPService {
     }
 
     /**
+     * Send TransferResponse to client with the corresponding error
+     *
+     * @param transaction; transaction that failed
+     * @param status; type of error
+     */
+    public void sendFailedTResponseMessage(Transaction transaction, TResponseMessage.Status status) {
+        TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  status);
+        ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
+        clientMessage.setMessage(tResponseMessage.toJson());
+        clientLink.send(transaction.getSender(), clientMessage);
+    }
+
+    /**
+     * Returns a list of size MaxBlockSize, with valid transactions.
+     * If transactions not valid are found, remove them from the list.
+     *
+     * @return List<Transaction>; Transactions needed for the block; but can also be less
+     * @throws Exception;
+     */
+    public List<Transaction> getValidTransactions() throws Exception {
+        List<Transaction> transactions = new ArrayList<>();
+
+        for (String transaction : transactionRequests) {
+            // if not valid, remove from the requests
+            if (!verifyTransactionValidity(Transaction.fromJson(transaction))) {
+                transactionRequests.remove(transaction);
+                continue;
+            }
+            transactions.add(Transaction.fromJson(transaction));
+            // number of transactions needed for the block creation
+            if(transactions.size() == Block.getMaxBlockSize())
+                return transactions;
+        }
+        // could be empty !
+        return transactions;
+    }
+
+    /**
      *
      * @param nodeId the author of the block
      * @return Block the created block
      */
-    public Block createBlock (String nodeId) {
+    public Block createBlock (String nodeId, List<Transaction> transactions) {
         Block newBlock = new Block();
 
         // Add to block the first n elements of transactionRequests
-        // Does not delete the elements
-        List<String> transactionsJson = transactionRequests.stream().limit(newBlock.getMaxBlockSize()).toList();
-        for (String transaction : transactionsJson) {
-            newBlock.addTransaction(Transaction.fromJson(transaction));
-        }
-
+        // validated, and authenticated
+        newBlock.setTransactions(transactions);
         newBlock.setAuthorId(nodeId);
         return newBlock;
     }
@@ -178,10 +212,44 @@ public class NodeService implements UDPService {
             return false;
     }
 
+    /**
+     * Verifies: balance before and after transaction, unique, authenticity
+     *
+     * @param transaction; transaction to be verified
+     * @return boolean; whether the transaction is valid
+     */
+    public boolean verifyTransactionValidity(Transaction transaction) throws Exception {
+        // TODO - more Transaction verification needed ?
+
+        // Stops attacks: replay attacks
+        if (completedTransfers.contains(transaction.getNonce())) {
+            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_REPEATED);
+            return false;
+        }
+
+        // TODO - not verifying well
+        // Verifies if client has enough money to do that transaction
+        else if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() ||
+                currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+            //currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
+            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_BALANCE);
+            return false;
+        }
+        
+        // Verifies if transaction is signed by the client
+        else if (!verifyTransactionAuthenticity(transaction)){
+            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_SIGNATURE);
+            return false;
+        }
+        System.out.println("TRUE!");
+        return true;
+    }
+
     // Get the balance of a specific client passed as an argument
     public int getBalance(String clientId) {
         return clientsBalance.get(clientId);
     }
+
 
     /**
      * Adds new Transaction to the Requests
@@ -193,52 +261,14 @@ public class NodeService implements UDPService {
      */
     public void newTransferRequest(Transaction transaction) throws Exception {
 
-        // TODO - more Transaction verification needed
-
-        // Stops attacks, through replayability
-        if (completedTransfers.contains(transaction.getNonce())) {
-            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
-            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_REPEATED);
-            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
-            clientMessage.setMessage(tResponseMessage.toJson());
-
-            clientLink.send(transaction.getSender(), clientMessage);
-            return;
-        }
-
-        // Verifies if client has enough money to do that transaction
-        if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() || 
-        currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
-            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
-            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_BALANCE);
-            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
-            clientMessage.setMessage(tResponseMessage.toJson());
-
-            clientLink.send(transaction.getSender(), clientMessage);
-            return;
-        }
-
-        if (!verifyTransactionAuthenticity(transaction)){
-            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
-            TResponseMessage tResponseMessage = new TResponseMessage(transaction.toJson(),  TResponseMessage.Status.FAILED_SIGNATURE);
-            ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.TRANSFER_RESPONSE);
-            clientMessage.setMessage(tResponseMessage.toJson());
-
-            clientLink.send(transaction.getSender(), clientMessage);
-            return;
-        }
-
         // Adds the transaction to the Queue
         transactionRequests.add(transaction.toJson());
-        currentClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
-
-        Block newBlock = new Block();
+        //currentClientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
 
         // if there are enough Transactions for a block startConsensus
-        // TODO - maybe change so it doesnt create a useless block
-        if (transactionRequests.size() == newBlock.getMaxBlockSize()) {
+        if (transactionRequests.size() == Block.getMaxBlockSize()) {
             // Reset the auxClientsBalance
-            currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
+            //currentClientsBalance.forEach((key, value) -> currentClientsBalance.put(key, clientsBalance.get(key)));
             startConsensus();
         }
     }
@@ -252,6 +282,12 @@ public class NodeService implements UDPService {
      * @throws Exception exception
      */
     public void startConsensus() throws Exception {
+
+        // Get the List of transactions
+        // if there are not enough valid transactions does not start consensus !
+        List<Transaction> transactionsForBlock = getValidTransactions();
+        if (transactionsForBlock.size() != Block.getMaxBlockSize())
+            return;
         
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -279,7 +315,7 @@ public class NodeService implements UDPService {
         if (this.config.isLeader()) {
 
             // Create a new Block
-            Block block = createBlock(this.config.getId());
+            Block block = createBlock(this.config.getId(), transactionsForBlock);
 
             // DIFFERENT VALUE byzantine test
             if (Tests.differentValue(config.getBehavior(), config.getId()).isPresent())
@@ -775,8 +811,9 @@ public class NodeService implements UDPService {
             if (config.isLeader()) {
                 Block value = instance.getPreparedBlock();
                 if (value == null) {
+                    List<Transaction> transactionsForBlock = getValidTransactions();
                     // creates new block
-                    value = createBlock(config.getId());
+                    value = createBlock(config.getId(), transactionsForBlock);
                 }
                 // Start a new consensus by broadcasting a PRE-PREPARE message
                 LOGGER.log(Level.INFO,
