@@ -9,13 +9,13 @@ import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 public class MessageBucket {
 
     private static final CustomLogger LOGGER = new CustomLogger(MessageBucket.class.getName());
-    // Quorum size
+    /** Quorum size */
     private final int quorumSize;
 
-    // f + 1 quorum size
+    /** f + 1 quorum size */
     private final int existsCorrectSet;
 
-    // Instance -> Round -> Sender ID -> Consensus message
+    /** Instance -> Round -> Sender ID -> Consensus message */
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
 
     public void printBucket() {
@@ -37,12 +37,10 @@ public class MessageBucket {
         existsCorrectSet = f + 1;
     }
 
-    /*
+    /**
      * Add a message to the bucket
      *
-     * @param consensusInstance
-     *
-     * @param message
+     * @param message message to add
      */
     public void addMessage(ConsensusMessage message) {
         int consensusInstance = message.getConsensusInstance();
@@ -53,6 +51,14 @@ public class MessageBucket {
         bucket.get(consensusInstance).get(round).put(message.getSenderId(), message);
     }
 
+    /**
+     * Gives all prepare messages for a given instance and round
+     *
+     * @param nodeId nodeId
+     * @param instance instance
+     * @param round round
+     * @return Optional<List<ConsensusMessage>> - Optional list
+     */
     public Optional<List<ConsensusMessage>> getPrepareMessages(String nodeId, int instance, int round) {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
             return Optional.empty();
@@ -61,6 +67,14 @@ public class MessageBucket {
         return Optional.of(bucket.get(instance).get(round).values().stream().toList());
     }
 
+    /**
+     * Checks whether there is a valid Prepare quorum
+     *
+     * @param nodeId nodeId
+     * @param instance instance
+     * @param round round
+     * @return Optional<String> - Empty if no quorum, otherwise value of the quorum
+     */
     public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null)
             return Optional.empty();
@@ -84,6 +98,14 @@ public class MessageBucket {
         }).findFirst();
     }
 
+    /**
+     * Checks whether there is a valid Commit quorum
+     *
+     * @param nodeId nodeId
+     * @param instance instance
+     * @param round round
+     * @return Optional<String> - Empty if no quorum, otherwise value of the quorum
+     */
     public Optional<String> hasValidCommitQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
@@ -102,7 +124,6 @@ public class MessageBucket {
         }).findFirst();
     }
 
-    // TODO - maybe do this in the same function instead of two?
     public Optional<String> existsCorrectRoundChangeSet(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
@@ -139,7 +160,14 @@ public class MessageBucket {
         }).findFirst();
     }
 
-    // Should only be applied when a quorum is guaranteed
+    /**
+     * Gives the message with the highest prepared round
+     * Should only be used when a quorum is already guaranteed
+     *
+     * @param instance instance
+     * @param round round
+     * @return Optional<RoundChangeMessage> - message with the highest prepared round
+     */
     public Optional<RoundChangeMessage> highestPrepared(int instance, int round){
         RoundChangeMessage highestRoundChangeMessage = null;
         int highestPreparedRound = -1;
@@ -151,9 +179,13 @@ public class MessageBucket {
         return Optional.ofNullable(highestRoundChangeMessage);
     }
 
-    /*
-     * Checks if all of the messages in Qrc have no prepared round and value
+    /**
+     * Checks if all the messages in Qrc have not prepared round and value
      * J1 of Round Change justification
+     *
+     * @param instance instance
+     * @param round round
+     * @return boolean - whether there is a prepared justification
      */
     public boolean nonePreparedJustification(int instance, int round) {
         return bucket.get(instance).get(round).values().stream().noneMatch(message -> {
