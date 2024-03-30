@@ -71,6 +71,7 @@ public class ClientLibrary {
         TResponseMessage transferResponse = message.deserializeTResponseMessage();
         Transaction transaction = Transaction.fromJson(transferResponse.getTransaction());
         int nonce = transaction.getNonce();
+        boolean responseCompleted = true;
 
         switch (transferResponse.getStatus()) {
             case FAILED_BALANCE:
@@ -78,8 +79,6 @@ public class ClientLibrary {
                         "{0} - Transfer Failed, from node {1}. Not enough balance to transfer amount {2} to client {3}",
                         clientConfig.getId(), message.getSenderId(),
                         transaction.getAmount(), transaction.getReceiver()));
-                System.out.println();
-                System.out.print(">> ");
                 break;
 
             case FAILED_RECEIVER:
@@ -87,32 +86,24 @@ public class ClientLibrary {
                         "{0} - Transfer Failed, from node {1}. Client {2} does not exist",
                         clientConfig.getId(), message.getSenderId(),
                         transaction.getReceiver()));
-                System.out.println();
-                System.out.print(">> ");
                 break;
 
             case FAILED_SENDER:
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Sender and receiver are the same",
                         clientConfig.getId(), message.getSenderId()));
-                System.out.println();
-                System.out.print(">> ");
                 break;
 
             case FAILED_SIGNATURE:
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Signature mismatch",
                         clientConfig.getId(), message.getSenderId()));
-                System.out.println();
-                System.out.print(">> ");
                 break;
 
             case FAILED_REPEATED:
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Repeated nonce",
                         clientConfig.getId(), message.getSenderId()));
-                System.out.println();
-                System.out.print(">> ");
                 break;
 
             case SUCCESS:
@@ -120,14 +111,13 @@ public class ClientLibrary {
                 transferResponses.computeIfAbsent(nonce, key -> new ArrayList<>())
                         .add(transferResponse);
                 // Prints when its exactly f+1
-                if (transferResponses.get(nonce).size() == smallQuorumSize) {
+                responseCompleted = transferResponses.get(nonce).size() == smallQuorumSize;
+                if (responseCompleted) {
                     System.out.println(MessageFormat.format(
                             "{0} - Transfer Completed from f+1 nodes in position {1}. Transfer amount: {2}. Transfer recipient: {3}",
                             clientConfig.getId(), transferResponse.getPosition(),
                             transaction.getAmount(), transaction.getReceiver())
                     );
-                    System.out.println();
-                    System.out.print(">> ");
                 }
                 break;
 
@@ -135,9 +125,13 @@ public class ClientLibrary {
                 System.out.println(MessageFormat.format(
                         "{0} - Transfer Failed, from node {1}. Reason is unknown.",
                         clientConfig.getId(), message.getSenderId()));
-                System.out.println();
-                System.out.print(">> ");
                 break;
+
+
+        }
+        if (responseCompleted) {
+            System.out.println();
+            System.out.print(">> ");
         }
     }
 
