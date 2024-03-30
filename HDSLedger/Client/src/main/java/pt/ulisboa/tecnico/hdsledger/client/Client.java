@@ -52,11 +52,11 @@ public class Client {
                     "Type 'transfer <destination> <value>' to make a transfer. \n" +
                     "Type 'balance <account id>' to check the balance. \n" +
                     "Type 'quit' to quit.");
-            System.out.println();
-            System.out.print(">> ");
 
             while(true){
-                
+                System.out.println();
+                System.out.print(">> ");
+
                 input = scanner.nextLine();
 
                 // If the input is empty, ignore it
@@ -64,7 +64,7 @@ public class Client {
 
                 String[] splitInput = input.split(" ");
 
-                // in case if for some reason, there are only spaces
+                // in case, if for some reason, there are only spaces/tabs/etc
                 if (splitInput.length == 0) continue;
 
                 // Case for each user input
@@ -82,8 +82,6 @@ public class Client {
                             clientLibrary.transfer(id, splitInput[1], Double.valueOf(splitInput[2]));
                         } catch (NumberFormatException e) {
                             System.out.println("Invalid value format. Please enter integers for destination and doubles for amount.");
-                            System.out.println();
-                            System.out.print(">> ");
                         }
                         break;
                     case "balance": case "b":
@@ -98,8 +96,6 @@ public class Client {
                             clientLibrary.check_balance(splitInput[1]);
                         } catch (NumberFormatException e) {
                             System.out.println("Invalid value format. Please enter integers for destination.");
-                            System.out.println();
-                            System.out.print(">> ");
                         }
                         break;
                     case "quit":
@@ -109,8 +105,6 @@ public class Client {
                         System.out.println("Invalid command. Type 'transfer <destination> <value>' to make a transfer. " +
                             "Type 'balance <account id>' to check the balance. Type 'quit' to quit.");
                 }
-                System.out.println();
-                System.out.print(">> ");
             }
 
         } catch (Exception e) {
