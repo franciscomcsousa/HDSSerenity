@@ -15,3 +15,8 @@ Ate agora passamos nos seguintes testes:
 # Attacks
 - Replay attack - protected against using nonces
 - Non repudiation - using signatures
+
+# Random stuff to write in the report
+- Leader grants total order of requests
+- Rotating leaders will make no transactions be held hostage
+  - also grants that f+1 responses to a client transfer is enough

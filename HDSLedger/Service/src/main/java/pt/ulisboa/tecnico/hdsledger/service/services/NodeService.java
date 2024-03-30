@@ -206,8 +206,6 @@ public class NodeService implements UDPService {
             return;
         }
 
-
-
         // Verifies if client has enough money to do that transaction
         if (clientsBalance.get(transaction.getSender()) < transaction.getAmount() || 
         currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
@@ -282,16 +280,9 @@ public class NodeService implements UDPService {
             // Create a new Block
             Block block = createBlock(this.config.getId());
 
-            // DIFF VALUE BYZANTINE TEST
-            if (config.getBehavior() == ProcessConfig.Behavior.DIFF_VALUE) {
-                /** Attacker model:
-                 *  Has full knowledge of the code
-                 *  Doesn't have access to other's private keys
-                 *
-                 *  Here attacker is the leader and tries to insert made up transactions on a block
-                 */
-                block = Tests.createNewBlock(config.getId());
-            }
+            // DIFFERENT VALUE byzantine test
+            if (Tests.differentValue(config.getBehavior(), config.getId()).isPresent())
+                block = Tests.differentValue(config.getBehavior(), config.getId()).get();
 
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
@@ -380,15 +371,9 @@ public class NodeService implements UDPService {
 
         PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getBlock());
 
-        // DIFFERENT PREPARE VALUE BYZANTINE TEST
-        if (config.getBehavior() == ProcessConfig.Behavior.PREPARE_VALUE) {
-            /** Attacker model:
-             *  Has full knowledge of the code
-             *  Doesn't have access to other's private keys
-             * 
-             *  Here a node creates a prepare message with a different block
-             */
-            Block differentBlock = Tests.createNewBlock(config.getId());
+        // DIFFERENT PREPARE VALUE byzantine test
+        if (Tests.differentPrepareValue(config.getBehavior(), config.getId()).isPresent()) {
+            Block differentBlock = Tests.differentPrepareValue(config.getBehavior(), config.getId()).get();
             prepareMessage = new PrepareMessage(differentBlock.toJson());
         }
 
@@ -480,27 +465,16 @@ public class NodeService implements UDPService {
 
             CommitMessage c = new CommitMessage(preparedBlock.get());
 
-            // DIFFERENT COMMIT VALUE BYZANTINE TEST
-            if (config.getBehavior() == ProcessConfig.Behavior.COMMIT_VALUE) {
-                /** Attacker model:
-                 *  Has full knowledge of the code
-                 *  Doesn't have access to other's private keys
-                 * 
-                 * Here a node creates a commit message with a different block
-                 */
-                Block differentBlock = Tests.createNewBlock(config.getId());
+            // DIFFERENT COMMIT VALUE byzantine test
+            if (Tests.differentCommitValue(config.getBehavior(), config.getId()).isPresent()) {
+                Block differentBlock = Tests.differentCommitValue(config.getBehavior(), config.getId()).get();
                 c = new CommitMessage(differentBlock.toJson());
             }
 
             instance.setCommitMessage(c);
 
-            // NO COMMIT BYZANTINE TEST
-            if (config.getBehavior() == ProcessConfig.Behavior.NO_COMMIT) {
-                // Here all nodes return without sending commit messages only for the first round
-                if (round == 1) {
-                    return;
-                }
-            }
+            // NO COMMIT fault test
+            if (Tests.noCommit(config.getBehavior(), round)) return;
 
             for (ConsensusMessage senderMessage : sendersMessage) {
                 ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
@@ -590,6 +564,7 @@ public class NodeService implements UDPService {
                                 .append(" Value: ").append(transaction.getAmount())
                                 .append("\n");
                     }
+                    blockCounter++;
                 }
                 LOGGER.log(Level.INFO,
                     MessageFormat.format(
