@@ -11,6 +11,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.*;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.Node;
 import pt.ulisboa.tecnico.hdsledger.service.models.*;
+import pt.ulisboa.tecnico.hdsledger.utilities.Colors;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.RSASignature;
@@ -145,35 +146,29 @@ public class NodeService implements UDPService {
     }
 
     /**
-     * Verifies if a block is authentic, i.e. its transactions and author signature are valid
+     * Verifies if a block is authentic, i.e. its signature is valid.
+     * (Doesn't verify transaction signatures)
      *
      * @param block the block to be verified
      * @return boolean whether the block is authentic
      * @throws Exception exception
      */
     public boolean verifyBlockAuthenticity(Block block) throws Exception {
-        List<Transaction> transactions = block.getTransactions();
-
-        // TODO - verify block creator signature
-
-        for (Transaction transaction: transactions) {
-            if (!verifyTransactionAuthenticity(transaction)){
-                return false;
-            }
-        }
-        return true;
+        return RSASignature.verifySign(block.getSignable(), block.getSignature(), block.getAuthorId());
     }
 
     /**
-     * Verifies if a block is valid, i.e. its authentic and doesn't break balance
+     * Verifies if a block is valid, i.e. block is authentic; transactions are unique and don't break balance
      *
      * @param block the block to be verified
      * @return boolean whether the block is valid
      * @throws Exception exception
      */
     public boolean verifyBlockValidity(Block block) throws Exception {
-        if (!verifyBlockAuthenticity(block))
+        // Validity implies authenticity
+        if (!verifyBlockAuthenticity(block)) {
             return false;
+        }
 
         // Temporary client balance - verifies if transactions are valid in this context
         Map<String, Integer> currentClientsBalance = new ConcurrentHashMap<>();
@@ -182,7 +177,7 @@ public class NodeService implements UDPService {
 
         for (Transaction transaction: transactions) {
             currentClientsBalance.putIfAbsent(transaction.getSender(), clientsBalance.get(transaction.getSender()));
-            if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+            if (verifyTransactionValidity(transaction, currentClientsBalance).isPresent()) {
                 return false;
             }
             currentClientsBalance.replace(
@@ -197,7 +192,7 @@ public class NodeService implements UDPService {
      *
      * @param transaction transaction to evaluate
      * @param currentClientsBalance current balance context
-     * @return boolean - whether the transaction is valid for the context
+     * @return Optional<TResponseMessage.Status> - Status of validity, if Optional.empty(), is valid
      * @throws Exception exception
      */
     public boolean verifyTransactionValidity(Transaction transaction, Map<String, Integer> currentClientsBalance) throws Exception {
@@ -215,16 +210,14 @@ public class NodeService implements UDPService {
 
         // Verifies if client has enough money to do that transaction
         else if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
-            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_BALANCE);
-            return false;
+            return Optional.of(TResponseMessage.Status.FAILED_BALANCE);
         }
 
         // Verifies if transaction is signed by the client
         else if (!verifyTransactionAuthenticity(transaction)){
-            sendFailedTResponseMessage(transaction, TResponseMessage.Status.FAILED_SIGNATURE);
-            return false;
+            return Optional.of(TResponseMessage.Status.FAILED_SIGNATURE);
         }
-        return true;
+        return Optional.empty();
     }
 
     /**
@@ -245,8 +238,10 @@ public class NodeService implements UDPService {
             // To save memory, copy only from clientsBalance values used in this context
             currentClientsBalance.putIfAbsent(transaction.getSender(), clientsBalance.get(transaction.getSender()));
             // if not valid, remove from the requests
-            if (!verifyTransactionValidity(transaction, currentClientsBalance)) {
+            Optional<TResponseMessage.Status> transactionValidity = verifyTransactionValidity(transaction, currentClientsBalance);
+            if (transactionValidity.isPresent()) {
                 transactionRequests.remove(transactionString);
+                sendFailedTResponseMessage(transaction, transactionValidity.get());
                 continue;
             }
             transactions.add(transaction);
@@ -268,13 +263,14 @@ public class NodeService implements UDPService {
      * @param transactions transaction of the block
      * @return Block - newly created block
      */
-    public Block createBlock (String authorId, List<Transaction> transactions) {
-        Block newBlock = new Block();
+    public Block createBlock (String authorId, List<Transaction> transactions) throws Exception {
+        Block newBlock = new Block(authorId, transactions);
+
+        String signable = newBlock.getSignable();
+        newBlock.setSignature(RSASignature.sign(signable, authorId));
 
         // Add to block the first n elements of transactionRequests
         // validated, and authenticated
-        newBlock.setTransactions(transactions);
-        newBlock.setAuthorId(authorId);
         return newBlock;
     }
 
@@ -310,7 +306,6 @@ public class NodeService implements UDPService {
         }
     }
 
-
     /**
      * Start an instance of consensus for a new block or preparedBlock
      * Only the current leader will start a consensus instance
@@ -332,7 +327,8 @@ public class NodeService implements UDPService {
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Node already started consensus for instance {1}",
+            LOGGER.log(Level.INFO, MessageFormat.format( Colors.YELLOW +
+                    "{0} - Node already started consensus for instance {1}" + Colors.RESET,
                     config.getId(), localConsensusInstance));
             return;
         }
@@ -411,12 +407,11 @@ public class NodeService implements UDPService {
                         config.getId(), senderId, consensusInstance, round));
 
         // TODO - verify if byzantine leader is not holding transactions hostage
-        // TODO - verify block balance!
-        // Verify if Block created by the leader has authentic transactions
+        // Verify if Block created by the leader has valid transactions
         if (!verifyBlockValidity(block)) {
             LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "{0} - Invalid block in PRE-PREPARE from {1} Consensus Instance {2}, Round {3}",
+                    MessageFormat.format( Colors.YELLOW +
+                            "{0} - Invalid block in PRE-PREPARE from {1} Consensus Instance {2}, Round {3}" + Colors.RESET,
                             config.getId(), senderId, consensusInstance, round));
             return;
         }
@@ -441,8 +436,8 @@ public class NodeService implements UDPService {
 
         if (!justifyPrePrepare(config.getId(), consensusInstance, round, message.getJustification())) {
             LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "{0} - Received UNJUSTIFIED PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}, ignoring",
+                    MessageFormat.format( Colors.YELLOW +
+                            "{0} - Received UNJUSTIFIED PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}, ignoring" + Colors.RESET,
                             config.getId(), senderId, consensusInstance, round));
             return;
         }
@@ -590,8 +585,8 @@ public class NodeService implements UDPService {
 
         if (instance == null) {
             // Should never happen because only receives commit as a response to a prepare message
-            MessageFormat.format(
-                    "{0} - CRITICAL: Received COMMIT message from {1}: Consensus Instance {2}, Round {3} BUT NO INSTANCE INFO",
+            MessageFormat.format( Colors.RED +
+                    "{0} - CRITICAL: Received COMMIT message from {1}: Consensus Instance {2}, Round {3} BUT NO INSTANCE INFO" + Colors.RESET,
                     config.getId(), message.getSenderId(), consensusInstance, round);
             return;
         }
@@ -645,8 +640,8 @@ public class NodeService implements UDPService {
                     blockCounter++;
                 }
                 LOGGER.log(Level.INFO,
-                    MessageFormat.format(
-                            "{0} - Current Ledger: {1}",
+                    MessageFormat.format( Colors.CYAN +
+                            "{0} - Current Ledger: {1}" + Colors.RESET,
                             config.getId(), ledgerInfo));
             }
 
@@ -695,6 +690,7 @@ public class NodeService implements UDPService {
 
     /**
      * Check whether a PrePrepare is correctly justified
+     *
      * @param nodeId self identification
      * @param instance instance in question
      * @param round round in question
@@ -706,9 +702,15 @@ public class NodeService implements UDPService {
         return round == 1 || this.justifyRoundChange(nodeId, instance, round, justification);
     }
 
-    /*
-    * Check if a Round Change is justified
-    *
+    /**
+     * Check whether a Round Change is correctly justified
+     *
+     * @param nodeId self identification
+     * @param instance instance in question
+     * @param round round in question
+     * @param justificationList justification sent by the sender of the PrePrepare message
+     * @return boolean whether the justification is valid
+     * @throws Exception exception
      */
     public boolean justifyRoundChange(String nodeId, int instance, int round, List<ConsensusMessage> justificationList) throws Exception {
         // If for all round changes messages, none have prepared a value, round change is justified
@@ -728,8 +730,8 @@ public class NodeService implements UDPService {
             }
             else {
                 LOGGER.log(Level.INFO,
-                        MessageFormat.format(
-                                "{0} - Invalid signature in justification for Instance {1}, Round {2}, ignoring",
+                        MessageFormat.format( Colors.YELLOW +
+                                "{0} - Invalid signature in justification for Instance {1}, Round {2}, ignoring" + Colors.RESET,
                                 config.getId(), consensusInstance, round));
                 return false;
             }
@@ -815,7 +817,7 @@ public class NodeService implements UDPService {
                 instance.getPreparedRound() < round &&
                 justifyRoundChange(config.getId(), consensusInstance, round, receivedJustification)) {
 
-            System.out.println("\n\nROUND CHANGE QUORUM RECEIVED");
+            System.out.println(Colors.GREEN + "ROUND CHANGE QUORUM RECEIVED" + Colors.RESET);
 
             instance.setLatestRoundChange(round);
 

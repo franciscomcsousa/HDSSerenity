@@ -14,8 +14,16 @@ public class Block {
     // Node who created
     private String authorId;
 
+    private byte[] signature;
+
+    /** Empty Constructor mainly used for attack tests */
     public Block() {
 
+    }
+
+    public Block(String authorId, List<Transaction> transactions) {
+        this.authorId = authorId;
+        this.transactions = transactions;
     }
 
     public static int getMaxBlockSize() {
@@ -39,7 +47,16 @@ public class Block {
         for (Transaction transaction : getTransactions()) {
             signable = signable.concat(transaction.getSignable());
         }
+        signable = signable + maxBlockSize + authorId;
         return signable;
+    }
+
+    public byte[] getSignature() {
+        return signature;
+    }
+
+    public void setSignature(byte[] signature) {
+        this.signature = signature;
     }
 
     public static Block fromJson(String json){
