@@ -148,7 +148,7 @@ public class ClientLibrary {
             switch (balanceResponse.getStatus()) {
                 case SUCCESS:
                     System.out.println(MessageFormat.format(
-                            "{0} - Client {1} has a balance of {2}",
+                            "{0} - Client {1} has a balance of {2,number,#.#######}",
                             clientConfig.getId(), nodeId, balanceResponse.getBalance())
                     );
                     break;

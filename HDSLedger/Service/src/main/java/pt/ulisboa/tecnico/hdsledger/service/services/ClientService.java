@@ -87,11 +87,12 @@ public class ClientService implements UDPService {
      */
     private void receivedBalance(ClientMessage message) {
         String senderId = message.getSenderId();
-        String nodeId = message.deserializeBalanceMessage().getNodeId();
+        String accountId = message.deserializeBalanceMessage().getNodeId();
 
         // Check if the node exists
-        if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(nodeId))) {
-            BResponseMessage bResponseMessage = new BResponseMessage(nodeId, 0.0, BResponseMessage.Status.FAILED_ID);
+        if (Arrays.stream(clientConfigs).noneMatch(clientId -> clientId.getId().equals(accountId))
+        && Arrays.stream(nodesConfigs).noneMatch(nodeId -> nodeId.getId().equals(accountId))) {
+            BResponseMessage bResponseMessage = new BResponseMessage(accountId, 0.0, BResponseMessage.Status.FAILED_ID);
             ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.BALANCE_RESPONSE);
             clientMessage.setMessage(bResponseMessage.toJson());
 
@@ -100,8 +101,8 @@ public class ClientService implements UDPService {
         }
 
         // Create message with balance
-        Double balance = nodeService.getBalance(nodeId);
-        BResponseMessage bResponseMessage = new BResponseMessage(nodeId, balance, BResponseMessage.Status.SUCCESS);
+        Double balance = nodeService.getBalance(accountId);
+        BResponseMessage bResponseMessage = new BResponseMessage(accountId, balance, BResponseMessage.Status.SUCCESS);
         ClientMessage clientMessage = new ClientMessage(config.getId(), Message.Type.BALANCE_RESPONSE);
         clientMessage.setMessage(bResponseMessage.toJson());
 

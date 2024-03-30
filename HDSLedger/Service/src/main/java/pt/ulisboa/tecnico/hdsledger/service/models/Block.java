@@ -5,8 +5,6 @@ import java.util.List;
 import com.google.gson.Gson;
 
 public class Block {
-
-    // TODO - add special transaction, fixed value sent to block creator
     private List<Transaction> transactions = new LinkedList<>();
 
     private static int maxBlockSize = 2;
@@ -53,7 +51,7 @@ public class Block {
         for (Transaction transaction : getTransactions()) {
             signable = signable.concat(transaction.getSignable());
         }
-        signable = signable + maxBlockSize + authorId;
+        signable = signable + maxBlockSize + fixedTransactionFee + authorId;
         return signable;
     }
 
