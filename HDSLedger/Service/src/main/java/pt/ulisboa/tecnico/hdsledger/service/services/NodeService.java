@@ -300,6 +300,37 @@ public class NodeService implements UDPService {
     }
 
     /**
+     * Updates the leader of the consensus
+     */
+    public void changeLeader() {
+        // Update the leader of the consensus
+        // (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
+        Arrays.stream(nodesConfig).forEach(
+                processConfig -> { if (isLeader(processConfig.getId())) processConfig.setLeader(false); }
+        );
+
+        int currentLeaderId = Integer.parseInt(leaderConfig.getId());
+        String newLeaderId;
+
+        // TODO - if leader doesnt crash and round change still gets through, leader gets confused
+        if (currentLeaderId + 1 > Arrays.stream(nodesConfig)
+                .filter(processConfig -> Integer.parseInt(processConfig.getId()) < 20)
+                .count())
+            newLeaderId = "1";
+        else
+            newLeaderId = Integer.toString(currentLeaderId + 1);
+
+        Arrays.stream(nodesConfig).forEach(
+                processConfig -> { if (processConfig.getId().equals(newLeaderId)) processConfig.setLeader(true); }
+        );
+
+        this.leaderConfig = Arrays.stream(nodesConfig)
+                .filter(processConfig -> processConfig.isLeader())
+                .findFirst().get();
+    }
+
+
+    /**
      * Start an instance of consensus for a new block or preparedBlock
      * Only the current leader will start a consensus instance
      * the remaining nodes only update timers.
@@ -335,6 +366,12 @@ public class NodeService implements UDPService {
                 e.printStackTrace();
             }
         }
+
+        // verify if there should be a leader rotation
+        // rotates every 5 consensus instances
+        if (localConsensusInstance % 5 == 0)
+            changeLeader();
+
 
         // Leader creates new Block, or uses the preparedBlock
         // then broadcasts PRE-PREPARE message
@@ -843,30 +880,8 @@ public class NodeService implements UDPService {
 
             instance.setLatestRoundChange(currentRound);
 
-            // Update the leader of the consensus
-            // (remove the old leader and make the one with the id of the previous leader + 1 the new leader)
-            Arrays.stream(nodesConfig).forEach(
-                    processConfig -> { if (isLeader(processConfig.getId())) processConfig.setLeader(false); }
-            );
-
-            int currentLeaderId = Integer.parseInt(leaderConfig.getId());
-            String newLeaderId;
-
-            // TODO - if leader doesnt crash and round change still gets through, leader gets confused
-            if (currentLeaderId + 1 > Arrays.stream(nodesConfig)
-                    .filter(processConfig -> Integer.parseInt(processConfig.getId()) < 20)
-                    .count())
-                newLeaderId = "1";
-            else
-                newLeaderId = Integer.toString(currentLeaderId + 1);
-
-            Arrays.stream(nodesConfig).forEach(
-                    processConfig -> { if (processConfig.getId().equals(newLeaderId)) processConfig.setLeader(true); }
-            );
-
-            leaderConfig = Arrays.stream(nodesConfig)
-                    .filter(processConfig -> processConfig.isLeader())
-                    .findFirst().get();
+            // Update leader of consensus
+            changeLeader();
 
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
