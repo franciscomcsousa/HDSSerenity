@@ -88,7 +88,25 @@ python3 puppet-master.py <servers_config> <clients_config>
 
 **Note: It is not necessary to provide the file extension (.json), only the file name is needed**
 
-If no arguments are used or invalid ones are entered, the script will default to the normal configuration.
+If no arguments are used or invalid ones are entered, the script will default to the normal configuration. If only the server argument is passed, the default configuration of multiple clients will be used.
+
+## Tests
+
+The description of each test is as follows:
+
+- `faulty_leader`: byzantine leader that crashes after program start
+- `multiple_leaders`: byzantine node that assumes they are the leader, leading to multiple leaders
+- `different_value`: byzantine leader that changes the block of transactions requested by the clients before consensus starts or byzantine client that tries to forge a transaction
+- `prepare_value`: byzantine node that changes the block of transactions it sends in the prepare message
+- `commit_value`: byzantine node that changes the block of transactions it sends in the commit message
+- `no_commit`: forced round change with prepared values, but without nodes having committed them
+- `node_replay_attack`: byzantine node that attempts a replay attack
+- `client_replay_attack`: byzantine client that attempts a replay attack
+- `ignore_client`: byzantine leader that ignores a client's requests
+- `big_instance`: byzantine leader that creates a message with a big instance number at the start of consensus
+- `commit_quorum`: byzantine node that does not receive messages from others in a consensus instance, triggering a timerExpiry and a round change while the other nodes have committed, to which the other nodes reply with a quorum of commit messages
+
+Each test uses the `behavior` field of the node configurations to determine what to test.
 
 ## Maven
 

@@ -1,7 +1,3 @@
-# To Do - Markdown
-Ledger pode dar overflow, por append requests num buffer caso não tenhamos a anterior
-Pagar ao lider que criou o bloco, não ao lider atual, i.e block producer
-
 # Tests
 Ate agora passamos nos seguintes testes:
 - Leader faulty/byzantino que crasha
@@ -14,6 +10,7 @@ Ate agora passamos nos seguintes testes:
 - Replay attacks tanto de nodes e clientes
 - Leader a ignorar um cliente
 - Leader mandar uma big instance no inicio do consenso
+- Node byzantino que não recebe msgs dos outros, trigger a um timerExpiry e recebe quorum de commit ja feito pelos outros
 
 # Attacks
 - Replay attack - protected against using nonces
