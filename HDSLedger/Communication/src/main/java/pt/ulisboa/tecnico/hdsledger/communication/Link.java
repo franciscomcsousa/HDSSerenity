@@ -100,7 +100,9 @@ public class Link {
                 if (node == null)
                     throw new HDSSException(ErrorMessage.NoSuchNode);
 
-                data.setMessageId(messageCounter.getAndIncrement());
+                if (data.getMessageId() == -1) {
+                    data.setMessageId(messageCounter.getAndIncrement());
+                }
 
                 // If the message is not ACK, it will be resent
                 InetAddress destAddress = InetAddress.getByName(node.getHostname());
@@ -110,7 +112,7 @@ public class Link {
                 int sleepTime = BASE_SLEEP_TIME;
 
                 // sign the message and get the signature
-                byte[] signature = null;
+                byte[] signature;
 
                 // If a message was once signed, can't be signed again
                 if (data.getSignature() == null) {

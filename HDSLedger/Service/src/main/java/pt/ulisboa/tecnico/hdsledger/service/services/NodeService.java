@@ -634,6 +634,7 @@ public class NodeService implements UDPService {
 
         // COMMIT QUORUM byzantine test
         if (Tests.commitQuorum(config.getBehavior(), consensusInstance)) {
+            config.setBehavior(ProcessConfig.Behavior.NONE);
             return;
         }
 

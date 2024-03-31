@@ -7,12 +7,12 @@ public class Message implements Serializable {
     // Sender identifier
     private String senderId;
     // Message identifier
-    private int messageId;
+    private int messageId = -1;
     // Message type
     private Type type;
 
     // Signature
-    private byte[] signature;
+    private byte[] signature = null;
 
     public enum Type {
         // CONSENSUS
