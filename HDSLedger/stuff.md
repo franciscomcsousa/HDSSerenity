@@ -11,6 +11,9 @@ Ate agora passamos nos seguintes testes:
 - Node byzantino que altera o bloco de transaçoes que manda no commit
 - Round change com valores prepared (quando os nodes nao dao commit, por exemplo)
 - Cliente byzantino que tenta dar forge de uma transferencia
+- Replay attacks tanto de nodes e clientes
+- Leader a ignorar um cliente
+- Leader mandar uma big instance no inicio do consenso
 
 # Attacks
 - Replay attack - protected against using nonces

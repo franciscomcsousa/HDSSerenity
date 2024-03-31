@@ -561,7 +561,7 @@ public class NodeService implements UDPService {
         // an ACK)
         if (instance.getPreparedRound() >= round) {
 
-            // NO COMMIT fault test
+            // NO COMMIT byzantine test
             if (Tests.noCommit(config.getBehavior(), round)) return;
 
             LOGGER.log(Level.INFO,
@@ -605,7 +605,7 @@ public class NodeService implements UDPService {
 
             instance.setCommitMessage(c);
 
-            // NO COMMIT fault test
+            // NO COMMIT byzantine test
             if (Tests.noCommit(config.getBehavior(), round)) return;
 
             for (ConsensusMessage senderMessage : sendersMessage) {
