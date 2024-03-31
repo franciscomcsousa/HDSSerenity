@@ -203,7 +203,7 @@ public class NodeService implements UDPService {
         }
 
         // Verifies if client has enough money to do that transaction
-        else if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+        else if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount() + Block.getFixedTransactionFee()) {
             return Optional.of(TResponseMessage.Status.FAILED_BALANCE);
         }
 
@@ -560,6 +560,10 @@ public class NodeService implements UDPService {
         // Late prepare (consensus already ended for other nodes) only reply to him (as
         // an ACK)
         if (instance.getPreparedRound() >= round) {
+
+            // NO COMMIT fault test
+            if (Tests.noCommit(config.getBehavior(), round)) return;
+
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Already received PREPARE message for Consensus Instance {1}, Round {2}, "
