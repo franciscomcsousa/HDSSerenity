@@ -594,7 +594,7 @@ public class NodeService implements UDPService {
             return;
         }
 
-        Optional<String> commitBlock = commitMessages.hasValidCommitQuorum(config.getId(),
+        Optional<String> commitBlock = commitMessages.hasValidCommitQuorum(
                 consensusInstance, round);
 
         if (commitBlock.isPresent() && instance.getCommittedRound() < round) {
@@ -769,6 +769,15 @@ public class NodeService implements UDPService {
         roundChangeMessages.addMessage(message);
         Optional<RoundChangeMessage> roundChangeQuorum;
 
+        // Upon rule -> if round was already decided, send commit quorum to sender of the Round Change message
+        if (instance.getCommittedRound() > -1) {
+            Optional<List<ConsensusMessage>> set = commitMessages.getCommitMessages(messageConsensusInstance, instance.getCommittedRound());
+            if (set.isPresent())
+                for ( ConsensusMessage consensusMessage : set.get()) {
+                    link.send(consensusMessage.getSenderId(), consensusMessage);
+                }
+        }
+
         // Any upon rule can be triggered at most once per round
         if (instance.getLatestRoundChangeBroadcast() >= currentRound) {
             LOGGER.log(Level.INFO,
@@ -777,7 +786,7 @@ public class NodeService implements UDPService {
                             config.getId(), messageConsensusInstance, messageRound));
         }
         else {
-            roundChangeQuorum = roundChangeMessages.existsCorrectRoundChangeSet(config.getId(), messageConsensusInstance, currentRound);
+            roundChangeQuorum = roundChangeMessages.hasCorrectRoundChangeInSet(messageConsensusInstance, currentRound);
 
             // Upon rule -> if received a valid set of (f + 1) broadcast ROUND-CHANGE with round rmin
             if(roundChangeQuorum.isPresent() && instance.getPreparedRound() < currentRound) {
@@ -806,7 +815,7 @@ public class NodeService implements UDPService {
 
         // Verify if it has received Quorum, ROUND_CHANGE messages
         // if it has, JustifyRoundChange
-        roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(config.getId(), messageConsensusInstance, currentRound);
+        roundChangeQuorum = roundChangeMessages.hasValidRoundChangeQuorum(messageConsensusInstance, currentRound);
 
         List<ConsensusMessage> receivedJustification = message.getJustification();
 
@@ -920,7 +929,7 @@ public class NodeService implements UDPService {
 
         // Add any Prepare messages as justification
         Optional<List<ConsensusMessage>> justificationMessages =
-                prepareMessages.getPrepareMessages(config.getId(), consensusInstance.get(), existingConsensus.getPreparedRound());
+                prepareMessages.getPrepareMessages(consensusInstance.get(), existingConsensus.getPreparedRound());
 
         if (justificationMessages.isPresent()) {
             consensusMessage.setJustification(justificationMessages.get());

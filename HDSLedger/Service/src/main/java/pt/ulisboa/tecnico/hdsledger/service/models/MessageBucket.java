@@ -2,11 +2,9 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
-import pt.ulisboa.tecnico.hdsledger.utilities.Colors;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
 public class MessageBucket {
@@ -57,12 +55,26 @@ public class MessageBucket {
     /**
      * Gives all prepare messages for a given instance and round
      *
-     * @param nodeId nodeId
      * @param instance instance
      * @param round round
      * @return Optional<List<ConsensusMessage>> - Optional list
      */
-    public Optional<List<ConsensusMessage>> getPrepareMessages(String nodeId, int instance, int round) {
+    public Optional<List<ConsensusMessage>> getPrepareMessages(int instance, int round) {
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(bucket.get(instance).get(round).values().stream().toList());
+    }
+
+    /**
+     * Gives all commit messages for a given instance and round
+     *
+     * @param instance instance
+     * @param round round
+     * @return Optional<List<ConsensusMessage>> - Optional list
+     */
+    public Optional<List<ConsensusMessage>> getCommitMessages(int instance, int round) {
         if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
             return Optional.empty();
         }
@@ -104,12 +116,11 @@ public class MessageBucket {
     /**
      * Checks whether there is a valid Commit quorum
      *
-     * @param nodeId nodeId
      * @param instance instance
      * @param round round
      * @return Optional<String> - Empty if no quorum, otherwise value of the quorum
      */
-    public Optional<String> hasValidCommitQuorum(String nodeId, int instance, int round) {
+    public Optional<String> hasValidCommitQuorum(int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
@@ -127,23 +138,40 @@ public class MessageBucket {
         }).findFirst();
     }
 
-    public Optional<RoundChangeMessage> existsCorrectRoundChangeSet(String nodeId, int instance, int currentRound) {
+    /**
+     * Returns only if there is an (f + 1) set with rj > ri for all Round Change messages
+     *
+     * @param instance instance
+     * @param currentRound currentRound
+     * @return Optional<RoundChangeMessage> - The message with the lowest prepared round of any Round Change message in the set
+     */
+    public Optional<RoundChangeMessage> hasCorrectRoundChangeInSet(int instance, int currentRound) {
         List<ConsensusMessage> set = new ArrayList<>();
+        // Filters all the rounds that are greater than currentRound
+        // Adds all Round Change messages that have a round greater than currentRound
         Stream<Integer> roundSet = bucket.get(instance).keySet().stream().filter(r -> r > currentRound);
         roundSet.forEach((integer -> {
             bucket.get(instance).get(integer).forEach(((s, consensusMessage) -> set.add(consensusMessage)));
         }));
 
+        // Checks if the set size is greater than f+1
         if (set.size() < existsCorrectSet)
             return Optional.empty();
 
+        // Returns the lowest prepared round of any Round Change message in the set
         return set.stream().min(
                 Comparator.comparingInt(c -> c.deserializeRoundChangeMessage().getPreparedRound())
         ).map(ConsensusMessage::deserializeRoundChangeMessage);
     }
 
-    public Optional<RoundChangeMessage> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
-        // Create mapping of value to frequency
+    /**
+     * Returns only if there is a quorum of Round Change messages for the given round
+     *
+     * @param instance instance
+     * @param round round
+     * @return Optional<RoundChangeMessage> - The message with the highest prepared round of any Round Change message in the quorum
+     */
+    public Optional<RoundChangeMessage> hasValidRoundChangeQuorum(int instance, int round) {
         if (bucket.get(instance).get(round) == null || bucket.get(instance).get(round).size() < quorumSize)
             return Optional.empty();
 

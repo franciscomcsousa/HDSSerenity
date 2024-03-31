@@ -59,7 +59,6 @@ public class ClientMessage extends Message {
         this.replyToMessageId = replyToMessageId;
     }
 
-    // TODO - for now not signing position
     @Override
     public String getSignable(){
         return super.getSenderId() + super.getMessageId() + super.getType().toString()

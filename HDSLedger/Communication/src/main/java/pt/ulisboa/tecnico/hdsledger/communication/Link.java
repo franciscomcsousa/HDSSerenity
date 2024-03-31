@@ -112,8 +112,11 @@ public class Link {
                 // sign the message and get the signature
                 byte[] signature = null;
 
-                signature = RSASignature.sign(data.getSignable(), data.getSenderId());
-                data.setSignature(signature);
+                // If a message was once signed, can't be signed again
+                if (data.getSignature() == null) {
+                    signature = RSASignature.sign(data.getSignable(), data.getSenderId());
+                    data.setSignature(signature);
+                }
 
                 // Send message to local queue instead of using network if destination in self
                 if (nodeId.equals(this.config.getId())) {
@@ -177,8 +180,11 @@ public class Link {
         }).start();
     }
 
-    /*
+    /**
      * Receives a message from any node in the network (blocking)
+     *
+     * @return Message - received message
+     * @throws Exception exception
      */
     public Message receive() throws Exception {
 
