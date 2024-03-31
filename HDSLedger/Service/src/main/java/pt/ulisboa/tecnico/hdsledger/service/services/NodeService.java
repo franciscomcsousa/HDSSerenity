@@ -409,6 +409,16 @@ public class NodeService implements UDPService {
             return;
         }
 
+        // TODO - review logic
+        // Verify if the leader is using the correct consensusInstance
+        if (this.consensusInstance.get() != consensusInstance) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format( Colors.YELLOW +
+                                    "{0} - Invalid Consensus Instance in PRE-PREPARE from {1} Consensus Instance {2}, Round {3}" + Colors.RESET,
+                            config.getId(), senderId, consensusInstance, round));
+            return;
+        }
+
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId))
             return;
