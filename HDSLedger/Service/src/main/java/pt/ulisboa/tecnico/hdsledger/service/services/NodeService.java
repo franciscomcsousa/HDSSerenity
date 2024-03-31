@@ -701,10 +701,12 @@ public class NodeService implements UDPService {
                     }
                     blockCounter++;
                 }
-                LOGGER.log(Level.INFO,
+                // This could have been LOGGER, but for some reason it prints twice
+                System.out.println(Colors.CYAN + config.getId() + "- Current Ledger: " + ledgerInfo + Colors.RESET);
+                /*LOGGER.log(Level.INFO,
                     MessageFormat.format( Colors.CYAN +
                             "{0} - Current Ledger: {1}" + Colors.RESET,
-                            config.getId(), ledgerInfo));
+                            config.getId(), ledgerInfo));*/
             }
 
             lastDecidedConsensusInstance.getAndIncrement();

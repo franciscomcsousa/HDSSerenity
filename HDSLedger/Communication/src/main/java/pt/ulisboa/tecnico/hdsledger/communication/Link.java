@@ -238,17 +238,19 @@ public class Link {
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
-        // Message already received (add returns false if already exists) => Discard
-        if (isRepeated) {
-            message.setType(Type.IGNORE);
-        }
 
         // Local messages don't have a need to verify the signature
         if (!local) {
             // If signature doesn't match, message is set to INVALID
             if (!RSASignature.verifySign(message.getSignable(), signature, message.getSenderId())) {
+                System.out.println(Colors.CYAN + "Message of type is invalid: " + message.getType() + Colors.RESET);
                 message.setType(Type.INVALID);
             }
+        }
+
+        // Message already received (add returns false if already exists) => Discard
+        if (isRepeated) {
+            message.setType(Type.IGNORE);
         }
 
         switch (message.getType()) {
