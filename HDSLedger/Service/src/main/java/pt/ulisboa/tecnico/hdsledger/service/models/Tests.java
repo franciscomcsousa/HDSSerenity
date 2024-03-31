@@ -25,7 +25,10 @@ public class Tests {
                     RSASignature.sign(signable, nodeId));
             block.addTransaction(transaction);
         }
+
         block.setAuthorId(nodeId);
+        String blockSignable = block.getSignable();
+        block.setSignature(RSASignature.sign(blockSignable, nodeId));
 
         return block;
     }
@@ -44,7 +47,10 @@ public class Tests {
                     RSASignature.sign(signable, nodeId));
             block.addTransaction(transaction);
         }
+
         block.setAuthorId(nodeId);
+        String blockSignable = block.getSignable();
+        block.setSignature(RSASignature.sign(blockSignable, nodeId));
 
         return block;
     }
