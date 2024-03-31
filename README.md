@@ -88,9 +88,16 @@ python3 puppet-master.py <servers_config> <clients_config>
 
 **Note: It is not necessary to provide the file extension (.json), only the file name is needed**
 
+The `clients_config` only has two options:
+
+- `multiple_clients`: the default option, where 3 client applications are created
+- `single_client`: where only 1 client application is created
+
 If no arguments are used or invalid ones are entered, the script will default to the normal configuration. If only the server argument is passed, the default configuration of multiple clients will be used.
 
 ## Tests
+
+Each test is done through the use of different server configurations. In order to perform a test, just use one of the following test names on the `servers_config` argument of the program.
 
 The description of each test is as follows:
 
