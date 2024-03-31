@@ -203,7 +203,7 @@ public class NodeService implements UDPService {
         }
 
         // Verifies if client has enough money to do that transaction
-        else if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount()) {
+        else if (currentClientsBalance.get(transaction.getSender()) < transaction.getAmount() + Block.getFixedTransactionFee()) {
             return Optional.of(TResponseMessage.Status.FAILED_BALANCE);
         }
 
