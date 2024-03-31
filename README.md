@@ -102,16 +102,27 @@ Each test is done through the use of different server configurations. In order t
 The description of each test is as follows:
 
 - `faulty_leader`: byzantine leader that crashes after program start
+    - Test example: Can do any transactions on any client
 - `multiple_leaders`: byzantine node (node 2) that assumes they are the leader, leading to multiple leaders
+    - Test example: Can do any transactions on any client
 - `different_value`: byzantine leader that changes the block of transactions requested by the clients before consensus starts or byzantine client that tries to forge a transaction
+    - Test example: Can do any transactions on any client
 - `prepare_value`: byzantine node (node 1) that changes the block of transactions it sends in the prepare message
+    - Test example: Can do any transactions on any client
 - `commit_value`: byzantine node (node 3) that changes the block of transactions it sends in the commit message
+    - Test example: Can do any transactions on any client
 - `no_commit`: forced round change on the first round of consensus, with prepared values, but without nodes having committed them
+    - Test example: Can do any transactions on any client
 - `node_replay_attack`: byzantine node (node 1) that attempts a replay attack on the second consensus instance
+    - Test example: Can do any transactions on any client for both the first and second instances
 - `client_replay_attack`: byzantine client (any of them) that attempts a replay attack
+    - Test example: Can do any transactions on any client
 - `ignore_client`: byzantine leader that ignores a client's requests (client 20), which after at most 5 consensus instances when the leader changes, they get processed by the new leader
+    - Test example: Have client 20 make a transfer and then another client perform transfers during 5 consensus instances. After that, when the leader changes, perform one transfer on any client.
 - `big_instance`: byzantine leader that creates a message with a big instance number (10000) on the second consensus instance
+    - Test example: Can do any transactions on any client
 - `commit_quorum`: byzantine node (node 2) that does not receive messages from others on the first consensus instance, triggering a timerExpiry and a round change while the other nodes have committed, to which the other nodes reply with a quorum of commit messages
+    - Test example: Perform 2 transfers on any client and any instance
 
 **Note: all tests require the user to input the client commands themselves and perform transactions as they please**
 
