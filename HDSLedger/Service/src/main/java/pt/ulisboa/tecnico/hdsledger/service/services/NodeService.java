@@ -319,7 +319,6 @@ public class NodeService implements UDPService {
         int currentLeaderId = Integer.parseInt(leaderConfig.getId());
         String newLeaderId;
 
-        // TODO - if leader doesnt crash and round change still gets through, leader gets confused
         if (currentLeaderId + 1 > Arrays.stream(nodesConfig)
                 .filter(processConfig -> Integer.parseInt(processConfig.getId()) < 20)
                 .count())
@@ -917,7 +916,6 @@ public class NodeService implements UDPService {
             // If it's the leader, start a new consensus by broadcasting a PRE-PREPARE message
             // The value of the new consensus is the highest prepared value of the Quorum if it exists,
             // otherwise the value is to be created in the startConsensus function
-            // TODO - improve - change to only call startConsensus even when there is a preparedBlock
             if (config.isLeader()) {
                 if (value == null) {
                     List<Transaction> transactionsForBlock = getValidTransactions();

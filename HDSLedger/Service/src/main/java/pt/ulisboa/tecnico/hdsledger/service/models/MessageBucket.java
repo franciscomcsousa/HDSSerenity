@@ -98,8 +98,6 @@ public class MessageBucket {
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
-            //Block block = Block.fromJson(prepareMessage.getBlock());
-            // TODO - please do not let this be a key
 
             frequency.put(prepareMessage.getBlock(), frequency.getOrDefault(prepareMessage.getBlock(), 0) + 1);
         });
@@ -125,7 +123,6 @@ public class MessageBucket {
         HashMap<String, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
             CommitMessage commitMessage = message.deserializeCommitMessage();
-            //Block block = Block.fromJson(commitMessage.getBlock());
             frequency.put(commitMessage.getBlock(), frequency.getOrDefault(commitMessage.getBlock(), 0) + 1);
         });
 
