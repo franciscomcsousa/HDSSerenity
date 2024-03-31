@@ -835,6 +835,15 @@ public class NodeService implements UDPService {
         roundChangeMessages.addMessage(message);
         Optional<RoundChangeMessage> roundChangeQuorum;
 
+        // A Round Change message can't have Prepare Round greater than or equal to its message round
+        if (message.deserializeRoundChangeMessage().getPreparedRound() >= messageRound) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(Colors.YELLOW +
+                                    "{0} - Received ROUND-CHANGE message from {1} with Pr greater than R: Consensus Instance {2}, Round {3}, ignoring..." + Colors.RESET,
+                            config.getId(), senderId, messageConsensusInstance, messageRound));
+            return;
+        }
+
         // Upon rule -> if round was already decided, send commit quorum to sender of the Round Change message
         if (instance.getCommittedRound() > -1) {
             Optional<List<ConsensusMessage>> set = commitMessages.getCommitMessages(messageConsensusInstance, instance.getCommittedRound());
