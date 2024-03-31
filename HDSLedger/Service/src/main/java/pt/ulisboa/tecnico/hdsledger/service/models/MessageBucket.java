@@ -2,8 +2,11 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import pt.ulisboa.tecnico.hdsledger.communication.*;
+import pt.ulisboa.tecnico.hdsledger.utilities.Colors;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
 public class MessageBucket {
@@ -124,40 +127,29 @@ public class MessageBucket {
         }).findFirst();
     }
 
-    public Optional<String> existsCorrectRoundChangeSet(String nodeId, int instance, int round) {
-        // Create mapping of value to frequency
-        HashMap<String, Integer> frequency = new HashMap<>();
-        bucket.get(instance).get(round).values().forEach((message) -> {
-            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
-            String value = roundChangeMessage.getPreparedValue();
-            frequency.put(value, frequency.getOrDefault(value, 0) + 1);
-        });
+    public Optional<RoundChangeMessage> existsCorrectRoundChangeSet(String nodeId, int instance, int currentRound) {
+        List<ConsensusMessage> set = new ArrayList<>();
+        Stream<Integer> roundSet = bucket.get(instance).keySet().stream().filter(r -> r > currentRound);
+        roundSet.forEach((integer -> {
+            bucket.get(instance).get(integer).forEach(((s, consensusMessage) -> set.add(consensusMessage)));
+        }));
 
-        // Only one value (if any, thus the optional) will have a frequency
-        // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
-            return entry.getValue() >= existsCorrectSet;
-        }).map((Map.Entry<String, Integer> entry) -> {
-            return entry.getKey();
-        }).findFirst();
+        if (set.size() < existsCorrectSet)
+            return Optional.empty();
+
+        return set.stream().min(
+                Comparator.comparingInt(c -> c.deserializeRoundChangeMessage().getPreparedRound())
+        ).map(ConsensusMessage::deserializeRoundChangeMessage);
     }
 
-    public Optional<String> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
+    public Optional<RoundChangeMessage> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
-        HashMap<String, Integer> frequency = new HashMap<>();
-        bucket.get(instance).get(round).values().forEach((message) -> {
-            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
-            String value = roundChangeMessage.getPreparedValue();
-            frequency.put(value, frequency.getOrDefault(value, 0) + 1);
-        });
+        if (bucket.get(instance).get(round) == null || bucket.get(instance).get(round).size() < quorumSize)
+            return Optional.empty();
 
-        // Only one value (if any, thus the optional) will have a frequency
-        // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
-            return entry.getValue() >= quorumSize;
-        }).map((Map.Entry<String, Integer> entry) -> {
-            return entry.getKey();
-        }).findFirst();
+        return bucket.get(instance).get(round).values().stream().max(
+                Comparator.comparingInt(c -> c.deserializeRoundChangeMessage().getPreparedRound())
+        ).map(ConsensusMessage::deserializeRoundChangeMessage);
     }
 
     /**
@@ -188,6 +180,8 @@ public class MessageBucket {
      * @return boolean - whether there is a prepared justification
      */
     public boolean nonePreparedJustification(int instance, int round) {
+        if (bucket.get(instance).get(round) == null)
+            return false;
         return bucket.get(instance).get(round).values().stream().noneMatch(message -> {
             RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
             return (roundChangeMessage != null && !Objects.equals(roundChangeMessage.getPreparedValue(), ""));

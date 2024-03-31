@@ -9,7 +9,6 @@ public class RoundChangeMessage {
     // Prepared value
     private String preparedValue;
 
-
     public RoundChangeMessage(int preparedRound, String preparedValue){
         this.preparedRound = preparedRound;
         this.preparedValue = preparedValue;
