@@ -684,7 +684,7 @@ public class NodeService implements UDPService {
                 // Add block to ledger
                 ledger.add(consensusInstance - 1, blockToLedger);
 
-                // Debug convinience
+                // Debug convenience
                 StringBuilder ledgerInfo = new StringBuilder();
                 int blockCounter = 1;
                 ledgerInfo.append("\n");
@@ -721,7 +721,6 @@ public class NodeService implements UDPService {
             for (Transaction transaction : committedBlock.getTransactions()) {
                 // Update the balances of the clients
                 synchronized(clientsBalance) {
-                    // TODO - check if author exists?
                     clientsBalance.put(transaction.getSender(), clientsBalance.get(transaction.getSender()) - transaction.getAmount());
                     clientsBalance.put(transaction.getReceiver(), clientsBalance.get(transaction.getReceiver()) + transaction.getAmount());
                     // Transaction fee
@@ -739,10 +738,10 @@ public class NodeService implements UDPService {
                 // Respond to the client
                 clientLink.send(senderId, clientMessage);
 
-                // removes the transactions committed from the transactionsRequest
+                // Removes the transactions committed from the transactionsRequest
                 transactionRequests.remove(transaction.toJson());
 
-                // adds transaction nonce to the list of completed
+                // Adds transaction nonce to the list of completed
                 completedTransfers.add(transaction.getNonce());
             }
 

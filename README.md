@@ -95,18 +95,20 @@ If no arguments are used or invalid ones are entered, the script will default to
 The description of each test is as follows:
 
 - `faulty_leader`: byzantine leader that crashes after program start
-- `multiple_leaders`: byzantine node that assumes they are the leader, leading to multiple leaders
+- `multiple_leaders`: byzantine node (node 2) that assumes they are the leader, leading to multiple leaders
 - `different_value`: byzantine leader that changes the block of transactions requested by the clients before consensus starts or byzantine client that tries to forge a transaction
-- `prepare_value`: byzantine node that changes the block of transactions it sends in the prepare message
-- `commit_value`: byzantine node that changes the block of transactions it sends in the commit message
-- `no_commit`: forced round change with prepared values, but without nodes having committed them
-- `node_replay_attack`: byzantine node that attempts a replay attack
-- `client_replay_attack`: byzantine client that attempts a replay attack
-- `ignore_client`: byzantine leader that ignores a client's requests
-- `big_instance`: byzantine leader that creates a message with a big instance number at the start of consensus
-- `commit_quorum`: byzantine node that does not receive messages from others in a consensus instance, triggering a timerExpiry and a round change while the other nodes have committed, to which the other nodes reply with a quorum of commit messages
+- `prepare_value`: byzantine node (node 1) that changes the block of transactions it sends in the prepare message
+- `commit_value`: byzantine node (node 3) that changes the block of transactions it sends in the commit message
+- `no_commit`: forced round change on the first round of consensus, with prepared values, but without nodes having committed them
+- `node_replay_attack`: byzantine node (node 1) that attempts a replay attack on the second consensus instance
+- `client_replay_attack`: byzantine client (any of them) that attempts a replay attack
+- `ignore_client`: byzantine leader that ignores a client's requests (client 20), which after at most 5 consensus instances when the leader changes, they get processed by the new leader
+- `big_instance`: byzantine leader that creates a message with a big instance number (10000) on the second consensus instance
+- `commit_quorum`: byzantine node (node 2) that does not receive messages from others on the first consensus instance, triggering a timerExpiry and a round change while the other nodes have committed, to which the other nodes reply with a quorum of commit messages
 
-Each test uses the `behavior` field of the node configurations to determine what to test.
+**Note: all tests require the user to input the client commands themselves and perform transactions as they please**
+
+Each test uses the `behavior` field of the node configurations to determine what to test
 
 ## Maven
 

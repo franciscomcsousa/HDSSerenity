@@ -197,13 +197,13 @@ public class Tests {
      *  This tests the behaviour when a node doesn't receive messages from other nodes, triggers a timerExpiry and receives a quorum of commits afterwards
      *
      * @param behavior type of behaviour
-     * @param round id of the current round
+     * @param instance id of the current instance
      * @return boolean - whether to perform the test
      */
-    public static boolean commitQuorum(ProcessConfig.Behavior behavior, int round) {
+    public static boolean commitQuorum(ProcessConfig.Behavior behavior, int instance) {
         if (behavior == ProcessConfig.Behavior.COMMIT_QUORUM) {
             // Here the node doesn't receive messages from other nodes, triggers a timerExpiry and receives a quorum of commits afterwards
-            if (round == 1)
+            if (instance == 1)
                 return true;
             else
                 return false;
