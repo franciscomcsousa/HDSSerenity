@@ -539,9 +539,10 @@ public class NodeService implements UDPService {
         int round = message.getRound();
         String senderId = message.getSenderId();
 
-        PrepareMessage prepareMessage = message.deserializePrepareMessage();
-
-        //Block block = Block.fromJson(prepareMessage.getBlock());
+        // COMMIT QUORUM byzantine test
+        if (Tests.commitQuorum(config.getBehavior(), consensusInstance)) {
+            return;
+        }
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -632,6 +633,11 @@ public class NodeService implements UDPService {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
 
+        // COMMIT QUORUM byzantine test
+        if (Tests.commitQuorum(config.getBehavior(), consensusInstance)) {
+            return;
+        }
+
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
@@ -674,12 +680,9 @@ public class NodeService implements UDPService {
             synchronized(ledger) {
 
                 // Increment size of ledger to accommodate current instance
-                // TODO - do not add a block without checking if its sequential
                 ledger.ensureCapacity(consensusInstance);
-                //while (ledger.size() < consensusInstance - 1) {
-                //    ledger.add("");
-                //}
                 
+                // Add block to ledger
                 ledger.add(consensusInstance - 1, blockToLedger);
 
                 // Debug convinience
@@ -849,7 +852,7 @@ public class NodeService implements UDPService {
             Optional<List<ConsensusMessage>> set = commitMessages.getCommitMessages(messageConsensusInstance, instance.getCommittedRound());
             if (set.isPresent())
                 for ( ConsensusMessage consensusMessage : set.get()) {
-                    link.send(consensusMessage.getSenderId(), consensusMessage);
+                    link.send(senderId, consensusMessage);
                 }
         }
 

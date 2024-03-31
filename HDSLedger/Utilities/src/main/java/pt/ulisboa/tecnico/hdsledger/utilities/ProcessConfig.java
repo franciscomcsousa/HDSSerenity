@@ -26,7 +26,8 @@ public class ProcessConfig {
         NODE_REPLAY_ATTACK("NODE_REPLAY_ATTACK"),
         CLIENT_REPLAY_ATTACK("CLIENT_REPLAY_ATTACK"),
         BIG_INSTANCE("BIG_INSTANCE"),
-        IGNORE_CLIENT("IGNORE_CLIENT"),;
+        IGNORE_CLIENT("IGNORE_CLIENT"),
+        COMMIT_QUORUM("COMMIT_QUORUM"),;
 
         String behavior;
 
