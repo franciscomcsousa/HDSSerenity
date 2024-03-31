@@ -2,7 +2,7 @@
 
 ## Introduction
 
-HDSLedger is a simplified permissioned (closed membership) blockchain system with high dependability
+HDSSerenity is a simplified permissioned (closed membership) blockchain system with high dependability
 guarantees. It uses the Istanbul BFT consensus algorithm to ensure that all nodes run commands
 in the same order, achieving State Machine Replication (SMR) and guarantees that all nodes
 have the same state.
