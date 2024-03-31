@@ -293,6 +293,13 @@ public class NodeService implements UDPService {
             transactionRequests.add(transaction.toJson());
         }
 
+        // IGNORE CLIENT byzantine test
+        if (Tests.ignoreClient(config.getBehavior())) {
+            if (transaction.getSender().equals("20")) {
+                transactionRequests.remove(transaction.toJson());
+            }
+        }
+
         // if there are enough Transactions for a block startConsensus
         if (transactionRequests.size() == Block.getMaxBlockSize()) {
             startConsensus();
@@ -327,6 +334,10 @@ public class NodeService implements UDPService {
         this.leaderConfig = Arrays.stream(nodesConfig)
                 .filter(processConfig -> processConfig.isLeader())
                 .findFirst().get();
+
+        if (this.config.isLeader())
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - New Leader: {1}", config.getId(), leaderConfig.getId()));
     }
 
 
@@ -340,8 +351,9 @@ public class NodeService implements UDPService {
     public void startConsensus() throws Exception {
 
         // Get the List of transactions
-        // if there are not enough valid transactions does not start consensus !
         List<Transaction> transactionsForBlock = getValidTransactions();
+        
+        // if there are not enough valid transactions does not start consensus !
         if (transactionsForBlock.size() != Block.getMaxBlockSize())
             return;
         
@@ -372,7 +384,6 @@ public class NodeService implements UDPService {
         if (localConsensusInstance % 5 == 0)
             changeLeader();
 
-
         // Leader creates new Block, or uses the preparedBlock
         // then broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
@@ -391,10 +402,16 @@ public class NodeService implements UDPService {
             // NODE REPLAY ATTACK byzantine test
             if (Tests.nodeReplayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).isPresent())
                 block = Tests.nodeReplayAttack(config.getBehavior(), config.getId(), localConsensusInstance, completedTransfers).get();
-
-            ConsensusMessage m = this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound());
-            this.link.broadcast(m);
-
+            
+            // BIG INSTANCE byzantine test
+            if (Tests.bigInstance(config.getBehavior(), localConsensusInstance)) {
+                ConsensusMessage m = this.createConsensusMessage(block, 10000, instance.getCurrentRound());
+                this.link.broadcast(m);
+            }
+            else {
+                ConsensusMessage m = this.createConsensusMessage(block, localConsensusInstance, instance.getCurrentRound());
+                this.link.broadcast(m);
+            }
         }
         else {
             LOGGER.log(Level.INFO,
@@ -436,7 +453,6 @@ public class NodeService implements UDPService {
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
-        // TODO - verify if byzantine leader is not holding transactions hostage
         // Verify if Block created by the leader has valid transactions
         if (!verifyBlockValidity(block)) {
             LOGGER.log(Level.INFO,
@@ -446,7 +462,6 @@ public class NodeService implements UDPService {
             return;
         }
 
-        // TODO - review logic
         // Verify if the leader is using the correct consensusInstance
         if (this.consensusInstance.get() != consensusInstance) {
             LOGGER.log(Level.INFO,

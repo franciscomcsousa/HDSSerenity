@@ -20,6 +20,8 @@ server_configs = [
     "no_commit",
     "node_replay_attack",
     "client_replay_attack",
+    "big_instance",
+    "ignore_client",
 ]
 
 # Client node configuration file name

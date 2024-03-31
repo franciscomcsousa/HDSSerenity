@@ -155,4 +155,35 @@ public class Tests {
         }
         return false;
     }
+
+    /**
+     *  This tests the behaviour when a leader starts a consensus with a big instance
+     *
+     * @param behavior type of behaviour
+     * @param instance id of the current instance
+     * @return boolean - whether to perform the test
+     */
+    public static boolean bigInstance(ProcessConfig.Behavior behavior, int instance) {
+        if (behavior == ProcessConfig.Behavior.BIG_INSTANCE) {
+            // Here the leader starts a consensus with a big instance on the second instance
+            if (instance == 2)
+                return true;
+            else
+                return false;
+        }
+        return false;
+    }
+
+    /**
+     *  This tests the behaviour when a leader ignores a client's requests
+     *
+     * @param behavior type of behaviour
+     * @return boolean - whether to perform the test
+     */
+    public static boolean ignoreClient(ProcessConfig.Behavior behavior) {
+        if (behavior == ProcessConfig.Behavior.IGNORE_CLIENT) {
+            return true;
+        }
+        return false;
+    }
 }
