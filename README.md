@@ -155,6 +155,11 @@ Run with arguments
 cd <module>/
 mvn compile exec:java -Dexec.args="..."
 ```
+### Authors
+- [Francisco Sousa](https://github.com/franciscomcsousa)
+- [Miguel Porfírio](https://github.com/miguelporfirio19)
+- [Sara Aguincha](https://github.com/SaraAguincha)
+
 ---
 This codebase was adapted from last year's project solution, which was kindly provided by the following group: [David Belchior](https://github.com/DavidAkaFunky), [Diogo Santos](https://github.com/DiogoSantoss), [Vasco Correia](https://github.com/Vaascoo). We thank all the group members for sharing their code.
 
